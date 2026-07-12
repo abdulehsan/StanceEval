@@ -370,6 +370,8 @@ def train(
         # No eval set — disable evaluation and early stopping entirely.
         # save_strategy="epoch" so we have a checkpoint at each epoch;
         # load_best_model_at_end must be False when there's no eval.
+        # save_total_limit=1 keeps only the latest checkpoint, saving ~12 GB of disk
+        # space on machines with limited storage (each checkpoint is ~4 GB).
         training_args = TrainingArguments(
             output_dir=ckpt_path,
             num_train_epochs=epochs,
@@ -381,6 +383,7 @@ def train(
             weight_decay=0.01,
             eval_strategy="no",
             save_strategy="epoch",
+            save_total_limit=1,
             load_best_model_at_end=False,
             logging_strategy="epoch",
             report_to="none",
