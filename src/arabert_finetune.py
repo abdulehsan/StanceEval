@@ -277,12 +277,17 @@ def train(
     max_length: int = 128,
     early_stopping_patience: int = 2,
     seed: int = 42,
+    checkpoint_path: Optional[str] = None,
+    predict_only: bool = False,
 ) -> None:
     effective_batch = batch_size * gradient_accumulation_steps
     print(f"\n{'='*60}")
     print(f"  StanceEval-2026 — AraBERT Fine-tune")
     print(f"  Model: {model_key} ({MODEL_REGISTRY[model_key]})")
-    print(f"  Epochs: {epochs}, Batch: {batch_size}, GradAccum: {gradient_accumulation_steps}, Effective batch: {effective_batch}, LR: {lr}")
+    if predict_only:
+        print(f"  Mode: Predict Only (using checkpoint {checkpoint_path})")
+    else:
+        print(f"  Epochs: {epochs}, Batch: {batch_size}, GradAccum: {gradient_accumulation_steps}, Effective batch: {effective_batch}, LR: {lr}")
     print(f"{'='*60}\n")
 
     # ── Pre-flight ──────────────────────────────────────────────────────────
@@ -309,9 +314,11 @@ def train(
     class_weights = compute_class_weights(train_df)
     print(f"\n  Class weights [Against, Favor, None]: {[f'{w:.4f}' for w in class_weights]}")
 
+    model_load_path = checkpoint_path if checkpoint_path else hf_id
+
     # ── Tokenizer & preprocessor ─────────────────────────────────────────
-    print(f"\nLoading tokenizer: {hf_id} ...")
-    tokenizer = AutoTokenizer.from_pretrained(hf_id)
+    print(f"\nLoading tokenizer from {model_load_path} ...")
+    tokenizer = AutoTokenizer.from_pretrained(model_load_path)
 
     print("Loading ArabertPreprocessor ...")
     from arabert.preprocess import ArabertPreprocessor
@@ -324,12 +331,12 @@ def train(
     val_dataset = build_dataset(val_df, tokenizer, preprocessor, max_length)
 
     # ── Model ─────────────────────────────────────────────────────────────
-    print(f"\nLoading model: {hf_id} ...")
+    print(f"\nLoading model from {model_load_path} ...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"  Device: {device}")
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        hf_id,
+        model_load_path,
         num_labels=NUM_LABELS,
         id2label=ID2LABEL,
         label2id=LABEL2ID,
@@ -369,31 +376,35 @@ def train(
         class_weights=class_weights,
     )
 
-    # ── Train ─────────────────────────────────────────────────────────────
-    print("\nStarting training ...")
-    print("  (Early stopping on internal-val Favg2 — dev.csv not touched)")
-    try:
-        trainer.train()
-    except torch.cuda.OutOfMemoryError as e:
-        torch.cuda.empty_cache()
-        current_effective = batch_size * gradient_accumulation_steps
-        smaller_bs = max(1, batch_size // 2)
-        larger_ga = current_effective // smaller_bs
-        print(f"\n❌ CUDA Out of Memory during training.")
-        print(f"   Current: --batch_size {batch_size} --gradient_accumulation_steps {gradient_accumulation_steps}")
-        print(f"   Effective batch size: {current_effective}")
-        print(f"   Fix: rerun with a smaller batch and more accumulation steps to keep the same effective batch, e.g.:")
-        print(f"     python src/arabert_finetune.py --model_key {model_key} --batch_size {smaller_bs} --gradient_accumulation_steps {larger_ga}")
-        if model_key == "arabertv02_twitter_large":
-            print(f"   Note: arabertv02_twitter_large (371M params) requires ~5.9GB VRAM for optimizer")
-            print(f"   states alone — it cannot fit in 4GB VRAM even at batch_size=1.")
-            print(f"   To run it on 4GB VRAM you need 8-bit Adam: pip install bitsandbytes")
-            print(f"   then add optim='adamw_bnb_8bit' to TrainingArguments manually.")
-        raise SystemExit(1)
+    if not predict_only:
+        # ── Train ─────────────────────────────────────────────────────────────
+        print("\nStarting training ...")
+        print("  (Early stopping on internal-val Favg2 — dev.csv not touched)")
+        try:
+            trainer.train()
+        except torch.cuda.OutOfMemoryError as e:
+            torch.cuda.empty_cache()
+            current_effective = batch_size * gradient_accumulation_steps
+            smaller_bs = max(1, batch_size // 2)
+            larger_ga = current_effective // smaller_bs
+            print(f"\n❌ CUDA Out of Memory during training.")
+            print(f"   Current: --batch_size {batch_size} --gradient_accumulation_steps {gradient_accumulation_steps}")
+            print(f"   Effective batch size: {current_effective}")
+            print(f"   Fix: rerun with a smaller batch and more accumulation steps to keep the same effective batch, e.g.:")
+            print(f"     python src/arabert_finetune.py --model_key {model_key} --batch_size {smaller_bs} --gradient_accumulation_steps {larger_ga}")
+            if model_key == "arabertv02_twitter_large":
+                print(f"   Note: arabertv02_twitter_large (371M params) requires ~5.9GB VRAM for optimizer")
+                print(f"   states alone — it cannot fit in 4GB VRAM even at batch_size=1.")
+                print(f"   To run it on 4GB VRAM you need 8-bit Adam: pip install bitsandbytes")
+                print(f"   then add optim='adamw_bnb_8bit' to TrainingArguments manually.")
+            raise SystemExit(1)
 
-    best_ckpt = trainer.state.best_model_checkpoint
-    print(f"\n  Best checkpoint: {best_ckpt}")
-    print(f"  Best internal-val Favg2: {trainer.state.best_metric:.4f}")
+        best_ckpt = trainer.state.best_model_checkpoint
+        print(f"\n  Best checkpoint: {best_ckpt}")
+        print(f"  Best internal-val Favg2: {trainer.state.best_metric:.4f}")
+    else:
+        print(f"\nSkipping training. Running inference only using model from {model_load_path} ...")
+        print(f"  Model loaded from: {model_load_path}")
 
     # ── Dev inference (one-shot, final) ──────────────────────────────────
     print("\nRunning inference on data/dev.csv (one-shot, final) ...")
@@ -502,11 +513,26 @@ VRAM guide for RTX 3050 Ti Laptop (4GB):
         help="Early stopping patience in epochs (default 2)",
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--checkpoint_path",
+        type=str,
+        default=None,
+        help="Path to a specific model checkpoint to load (e.g. checkpoints/arabertv02_twitter_base/checkpoint-591).",
+    )
+    parser.add_argument(
+        "--predict_only",
+        action="store_true",
+        help="Skip model training and run evaluation/prediction only using the specified --checkpoint_path.",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.predict_only and not args.checkpoint_path:
+        print("❌ Error: --checkpoint_path must be specified when using --predict_only.")
+        sys.exit(1)
+
     train(
         model_key=args.model_key,
         epochs=args.epochs,
@@ -516,4 +542,6 @@ if __name__ == "__main__":
         max_length=args.max_length,
         early_stopping_patience=args.early_stopping_patience,
         seed=args.seed,
+        checkpoint_path=args.checkpoint_path,
+        predict_only=args.predict_only,
     )
