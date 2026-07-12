@@ -209,16 +209,21 @@ class WeightedLossTrainer(Trainer):
 def make_compute_metrics(val_df):
     """Return a compute_metrics function that the Trainer calls each eval step.
 
-    Uses internal-val split rows to compute Favg2 for early stopping.
-    The val_df is used to retrieve the true stances (in the same row order
-    as the val dataset).
+    Uses eval_pred.label_ids dynamically to compute Favg2/Favg3, ensuring
+    compatibility with validation splits and inference predictions of any size.
     """
-    true_labels = val_df["stance"].tolist()
-
     def compute_metrics(eval_pred):
         logits, label_ids = eval_pred
         pred_ids = np.argmax(logits, axis=-1)
         pred_labels = [ID2LABEL[i] for i in pred_ids]
+
+        if label_ids is not None:
+            # Decode the label_ids (numpy array of ints) to string labels
+            true_labels = [ID2LABEL[int(i)] for i in label_ids]
+        else:
+            # Fallback if label_ids is not present (e.g. unlabelled blind test set)
+            true_labels = ["None"] * len(pred_labels)
+
         score = favg2(true_labels, pred_labels)
         score3 = favg3(true_labels, pred_labels)
         return {"favg2": score, "favg3": score3}
