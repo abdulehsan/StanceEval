@@ -284,15 +284,23 @@ def train(
     seed: int = 42,
     checkpoint_path: Optional[str] = None,
     predict_only: bool = False,
+    full_train: bool = False,
+    run_name: Optional[str] = None,
 ) -> None:
     effective_batch = batch_size * gradient_accumulation_steps
+    # Determine the run name used for checkpoint dir and results row
+    result_name = run_name if run_name else model_key
     print(f"\n{'='*60}")
     print(f"  StanceEval-2026 — AraBERT Fine-tune")
     print(f"  Model: {model_key} ({MODEL_REGISTRY[model_key]})")
     if predict_only:
         print(f"  Mode: Predict Only (using checkpoint {checkpoint_path})")
+    elif full_train:
+        print(f"  Mode: Full-Data Training (all 3502 rows, no internal split)")
+        print(f"  Epochs: {epochs} (fixed, no early stopping), LR: {lr}")
     else:
         print(f"  Epochs: {epochs}, Batch: {batch_size}, GradAccum: {gradient_accumulation_steps}, Effective batch: {effective_batch}, LR: {lr}")
+    print(f"  Run name / checkpoint dir: {result_name}")
     print(f"{'='*60}\n")
 
     # ── Pre-flight ──────────────────────────────────────────────────────────
@@ -301,19 +309,26 @@ def train(
     hf_id = MODEL_REGISTRY[model_key]
 
     # ── Paths ───────────────────────────────────────────────────────────────
-    ckpt_path = os.path.join(CKPT_DIR, model_key)
-    pred_csv = os.path.join(PRED_DIR, f"{model_key}_dev_preds.csv")
-    pred_txt = os.path.join(PRED_DIR, f"{model_key}_dev_preds.txt")
+    ckpt_path = os.path.join(CKPT_DIR, result_name)
+    pred_csv = os.path.join(PRED_DIR, f"{result_name}_dev_preds.csv")
+    pred_txt = os.path.join(PRED_DIR, f"{result_name}_dev_preds.txt")
     os.makedirs(ckpt_path, exist_ok=True)
     os.makedirs(PRED_DIR, exist_ok=True)
 
     # ── Load data ───────────────────────────────────────────────────────────
-    print("Loading train.csv and making internal split ...")
     train_df = load_data(os.path.join(DATA_DIR, "train.csv"))
-    tr_df, val_df = make_internal_split(train_df, test_size=0.10, random_state=seed)
-    print(f"  Train: {len(tr_df)} rows | Internal-val: {len(val_df)} rows")
-    print(f"  Internal-val stance distribution:")
-    print(val_df["stance"].value_counts().to_string())
+
+    if full_train:
+        print("Full-data mode: training on ALL 3502 rows (no internal split) ...")
+        tr_df = train_df
+        val_df = None
+        print(f"  Train: {len(tr_df)} rows | No internal-val split")
+    else:
+        print("Loading train.csv and making internal split ...")
+        tr_df, val_df = make_internal_split(train_df, test_size=0.10, random_state=seed)
+        print(f"  Train: {len(tr_df)} rows | Internal-val: {len(val_df)} rows")
+        print(f"  Internal-val stance distribution:")
+        print(val_df["stance"].value_counts().to_string())
 
     # ── Class weights (global, from full train before split) ─────────────
     class_weights = compute_class_weights(train_df)
@@ -332,8 +347,11 @@ def train(
     # ── Build datasets ────────────────────────────────────────────────────
     print("Building train dataset ...")
     train_dataset = build_dataset(tr_df, tokenizer, preprocessor, max_length)
-    print("Building val dataset ...")
-    val_dataset = build_dataset(val_df, tokenizer, preprocessor, max_length)
+    if val_df is not None:
+        print("Building val dataset ...")
+        val_dataset = build_dataset(val_df, tokenizer, preprocessor, max_length)
+    else:
+        val_dataset = None
 
     # ── Model ─────────────────────────────────────────────────────────────
     print(f"\nLoading model from {model_load_path} ...")
@@ -348,43 +366,70 @@ def train(
     )
 
     # ── Training args ─────────────────────────────────────────────────────
-    training_args = TrainingArguments(
-        output_dir=ckpt_path,
-        num_train_epochs=epochs,
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=gradient_accumulation_steps,
-        learning_rate=lr,
-        warmup_ratio=0.1,
-        weight_decay=0.01,
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        metric_for_best_model="favg2",
-        greater_is_better=True,
-        logging_strategy="epoch",
-        report_to="none",
-        seed=seed,
-        fp16=torch.cuda.is_available(),  # use fp16 only on GPU
-        dataloader_num_workers=0,        # Windows-safe
-    )
+    if full_train:
+        # No eval set — disable evaluation and early stopping entirely.
+        # save_strategy="epoch" so we have a checkpoint at each epoch;
+        # load_best_model_at_end must be False when there's no eval.
+        training_args = TrainingArguments(
+            output_dir=ckpt_path,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=batch_size,
+            per_device_eval_batch_size=batch_size,
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            learning_rate=lr,
+            warmup_ratio=0.1,
+            weight_decay=0.01,
+            eval_strategy="no",
+            save_strategy="epoch",
+            load_best_model_at_end=False,
+            logging_strategy="epoch",
+            report_to="none",
+            seed=seed,
+            fp16=torch.cuda.is_available(),
+            dataloader_num_workers=0,
+        )
+    else:
+        training_args = TrainingArguments(
+            output_dir=ckpt_path,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=batch_size,
+            per_device_eval_batch_size=batch_size,
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            learning_rate=lr,
+            warmup_ratio=0.1,
+            weight_decay=0.01,
+            eval_strategy="epoch",
+            save_strategy="epoch",
+            load_best_model_at_end=True,
+            metric_for_best_model="favg2",
+            greater_is_better=True,
+            logging_strategy="epoch",
+            report_to="none",
+            seed=seed,
+            fp16=torch.cuda.is_available(),
+            dataloader_num_workers=0,
+        )
 
     # ── Trainer ───────────────────────────────────────────────────────────
+    callbacks = [] if full_train else [EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)]
     trainer = WeightedLossTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         processing_class=tokenizer,
-        compute_metrics=make_compute_metrics(val_df),
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)],
+        compute_metrics=make_compute_metrics(val_df) if val_df is not None else None,
+        callbacks=callbacks,
         class_weights=class_weights,
     )
 
     if not predict_only:
         # ── Train ─────────────────────────────────────────────────────────────
         print("\nStarting training ...")
-        print("  (Early stopping on internal-val Favg2 — dev.csv not touched)")
+        if full_train:
+            print(f"  Training on full dataset for {epochs} epochs (no early stopping)")
+        else:
+            print("  (Early stopping on internal-val Favg2 — dev.csv not touched)")
         try:
             trainer.train()
         except torch.cuda.OutOfMemoryError as e:
@@ -404,9 +449,12 @@ def train(
                 print(f"   then add optim='adamw_bnb_8bit' to TrainingArguments manually.")
             raise SystemExit(1)
 
-        best_ckpt = trainer.state.best_model_checkpoint
-        print(f"\n  Best checkpoint: {best_ckpt}")
-        print(f"  Best internal-val Favg2: {trainer.state.best_metric:.4f}")
+        if not full_train:
+            best_ckpt = trainer.state.best_model_checkpoint
+            print(f"\n  Best checkpoint: {best_ckpt}")
+            print(f"  Best internal-val Favg2: {trainer.state.best_metric:.4f}")
+        else:
+            print(f"\n  Full-data training complete. Final epoch checkpoint saved to: {ckpt_path}")
     else:
         print(f"\nSkipping training. Running inference only using model from {model_load_path} ...")
         print(f"  Model loaded from: {model_load_path}")
@@ -467,9 +515,9 @@ def train(
     for target, m in sorted(local_metrics.items()):
         print(f"    {target}: Favg2={m['Favg2']:.4f}  Favg3={m['Favg3']:.4f}")
 
-    append_results_row(model_key, local_metrics)
+    append_results_row(result_name, local_metrics)
 
-    print(f"\n✅ Done: {model_key}")
+    print(f"\n✅ Done: {result_name}")
     print(f"   Checkpoint saved to: {ckpt_path}")
     print(f"   Predictions: {pred_csv}, {pred_txt}")
 
@@ -529,6 +577,20 @@ VRAM guide for RTX 3050 Ti Laptop (4GB):
         action="store_true",
         help="Skip model training and run evaluation/prediction only using the specified --checkpoint_path.",
     )
+    parser.add_argument(
+        "--full_train",
+        action="store_true",
+        help="Train on 100%% of train.csv (no internal 90/10 split, no early stopping). "
+             "Use with --epochs to lock to a fixed epoch count. "
+             "Useful for a final production run after hyperparameter selection.",
+    )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        default=None,
+        help="Override the checkpoint directory name and results_summary.csv row name. "
+             "Defaults to --model_key. Example: arabertv02_twitter_large_fulldata",
+    )
     return parser.parse_args()
 
 
@@ -549,4 +611,6 @@ if __name__ == "__main__":
         seed=args.seed,
         checkpoint_path=args.checkpoint_path,
         predict_only=args.predict_only,
+        full_train=args.full_train,
+        run_name=args.run_name,
     )
