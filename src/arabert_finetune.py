@@ -373,15 +373,39 @@ def train(
     # ── Dev inference (one-shot, final) ──────────────────────────────────
     print("\nRunning inference on data/dev.csv (one-shot, final) ...")
     dev_df = load_data(os.path.join(DATA_DIR, "dev.csv"))
+
+    # Capture row IDs in the exact order load_data returns them (original CSV order).
+    # build_dataset iterates df.iterrows() in this same order — no shuffle.
+    # trainer.predict() uses SequentialSampler (no shuffle) per HF Trainer contract.
+    # We assert length and zip positionally, which is safe given SequentialSampler,
+    # and then write in dev_df's original row order so the .txt aligns with the gold CSV.
+    dev_ids_in_order = dev_df["ID"].tolist()
+
     dev_dataset = build_dataset(dev_df, tokenizer, preprocessor, max_length)
 
     predictions = trainer.predict(dev_dataset)
-    pred_ids = np.argmax(predictions.predictions, axis=-1)
-    pred_labels = [ID2LABEL[i] for i in pred_ids]
+    pred_ids_raw = np.argmax(predictions.predictions, axis=-1)
+
+    # Positional assertion: DataLoader must not have dropped or reordered rows.
+    if len(pred_ids_raw) != len(dev_df):
+        raise RuntimeError(
+            f"Prediction count mismatch: got {len(pred_ids_raw)} predictions "
+            f"for {len(dev_df)} dev rows. DataLoader may have dropped rows — "
+            f"check dataloader_drop_last or dataset length."
+        )
+
+    # Build ID → label map from the positional pairing (SequentialSampler guarantee).
+    id_to_pred = {
+        dev_ids_in_order[i]: ID2LABEL[int(pred_ids_raw[i])]
+        for i in range(len(dev_ids_in_order))
+    }
+
+    # Write in dev_df's original CSV row order (the order the gold CSV uses).
+    pred_labels = [id_to_pred[row_id] for row_id in dev_ids_in_order]
 
     # ── Write outputs ─────────────────────────────────────────────────────
     write_pred_csv(dev_df, pred_labels, model_key, pred_csv)
-    write_pred_txt(pred_labels, pred_txt)
+    write_pred_txt(pred_labels, pred_txt)          # ← labels in original dev.csv row order
     print(f"  Written: {pred_csv}")
     print(f"  Written: {pred_txt}")
 
