@@ -267,15 +267,17 @@ def train(
     model_key: str,
     epochs: int = 5,
     batch_size: int = 16,
+    gradient_accumulation_steps: int = 1,
     lr: float = 2e-5,
     max_length: int = 128,
     early_stopping_patience: int = 2,
     seed: int = 42,
 ) -> None:
+    effective_batch = batch_size * gradient_accumulation_steps
     print(f"\n{'='*60}")
     print(f"  StanceEval-2026 — AraBERT Fine-tune")
     print(f"  Model: {model_key} ({MODEL_REGISTRY[model_key]})")
-    print(f"  Epochs: {epochs}, Batch: {batch_size}, LR: {lr}")
+    print(f"  Epochs: {epochs}, Batch: {batch_size}, GradAccum: {gradient_accumulation_steps}, Effective batch: {effective_batch}, LR: {lr}")
     print(f"{'='*60}\n")
 
     # ── Pre-flight ──────────────────────────────────────────────────────────
@@ -334,10 +336,11 @@ def train(
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
         learning_rate=lr,
         warmup_ratio=0.1,
         weight_decay=0.01,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="favg2",
@@ -364,7 +367,24 @@ def train(
     # ── Train ─────────────────────────────────────────────────────────────
     print("\nStarting training ...")
     print("  (Early stopping on internal-val Favg2 — dev.csv not touched)")
-    trainer.train()
+    try:
+        trainer.train()
+    except torch.cuda.OutOfMemoryError as e:
+        torch.cuda.empty_cache()
+        current_effective = batch_size * gradient_accumulation_steps
+        smaller_bs = max(1, batch_size // 2)
+        larger_ga = current_effective // smaller_bs
+        print(f"\n❌ CUDA Out of Memory during training.")
+        print(f"   Current: --batch_size {batch_size} --gradient_accumulation_steps {gradient_accumulation_steps}")
+        print(f"   Effective batch size: {current_effective}")
+        print(f"   Fix: rerun with a smaller batch and more accumulation steps to keep the same effective batch, e.g.:")
+        print(f"     python src/arabert_finetune.py --model_key {model_key} --batch_size {smaller_bs} --gradient_accumulation_steps {larger_ga}")
+        if model_key == "arabertv02_twitter_large":
+            print(f"   Note: arabertv02_twitter_large (371M params) requires ~5.9GB VRAM for optimizer")
+            print(f"   states alone — it cannot fit in 4GB VRAM even at batch_size=1.")
+            print(f"   To run it on 4GB VRAM you need 8-bit Adam: pip install bitsandbytes")
+            print(f"   then add optim='adamw_bnb_8bit' to TrainingArguments manually.")
+        raise SystemExit(1)
 
     best_ckpt = trainer.state.best_model_checkpoint
     print(f"\n  Best checkpoint: {best_ckpt}")
@@ -437,7 +457,14 @@ def train(
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Fine-tune an AraBERT variant for stance detection."
+        description="Fine-tune an AraBERT variant for stance detection.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+VRAM guide for RTX 3050 Ti Laptop (4GB):
+  Base variants (136M params) — batch_size=16 should fit; if OOM use --batch_size 8 --gradient_accumulation_steps 2
+  Large-Twitter (371M params) — batch_size=4 --gradient_accumulation_steps 4 recommended;
+    full fp16+AdamW still exceeds 4GB, needs 8-bit Adam (bitsandbytes) for stable training.
+""",
     )
     parser.add_argument(
         "--model_key",
@@ -446,7 +473,21 @@ def parse_args():
         help="Which AraBERT variant to fine-tune.",
     )
     parser.add_argument("--epochs",     type=int,   default=5,   help="Max epochs (default 5)")
-    parser.add_argument("--batch_size", type=int,   default=16,  help="Batch size (default 16)")
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=16,
+        help="Per-device batch size. Base models (136M): 16 safe on 4GB VRAM. "
+             "Large model (371M): try 4. Default: 16.",
+    )
+    parser.add_argument(
+        "--gradient_accumulation_steps",
+        type=int,
+        default=1,
+        help="Gradient accumulation steps. Effective batch = batch_size * this. "
+             "Use to simulate larger batches without the VRAM. E.g. --batch_size 4 --gradient_accumulation_steps 4 "
+             "= effective batch 16. Default: 1.",
+    )
     parser.add_argument("--lr",         type=float, default=2e-5, help="Learning rate (default 2e-5)")
     parser.add_argument("--max_length", type=int,   default=128, help="Max token length (default 128)")
     parser.add_argument(
@@ -465,6 +506,7 @@ if __name__ == "__main__":
         model_key=args.model_key,
         epochs=args.epochs,
         batch_size=args.batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         lr=args.lr,
         max_length=args.max_length,
         early_stopping_patience=args.early_stopping_patience,
