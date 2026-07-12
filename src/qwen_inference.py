@@ -248,20 +248,20 @@ def main():
     except ImportError:
         pass  # dotenv not installed; check environment variables directly
 
-    sambanova_key = os.environ.get("SAMBANOVA_API_KEY", "").strip()
+    fireworks_key = os.environ.get("FIREWORKS_API_KEY", "").strip()
 
-    if sambanova_key:
-        print("Using SambaNova Cloud serverless endpoint...")
-        base_url = "https://api.sambanova.ai/v1"
-        api_key = sambanova_key
-        model_id = "Qwen2.5-72B-Instruct"  # SambaNova Qwen model ID
+    if fireworks_key:
+        print("Using Fireworks AI serverless endpoint...")
+        base_url = "https://api.fireworks.ai/inference/v1"
+        api_key = fireworks_key
+        model_id = "accounts/fireworks/models/qwen2p5-72b-instruct"
     else:
         # Fall back to Hugging Face Router
         base_url = BASE_URL
         api_key = os.environ.get("HF_TOKEN", "").strip()
         model_id = MODEL_ID
         if not api_key:
-            print("❌ Error: No credentials found. Please set either SAMBANOVA_API_KEY or HF_TOKEN in your .env file.")
+            print("❌ Error: No credentials found. Please set either FIREWORKS_API_KEY or HF_TOKEN in your .env file.")
             sys.exit(1)
 
     # ── Load dev data ─────────────────────────────────────────────────────
