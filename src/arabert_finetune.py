@@ -373,20 +373,20 @@ def train(
     # ── Dev inference (one-shot, final) ──────────────────────────────────
     print("\nRunning inference on data/dev.csv (one-shot, final) ...")
     dev_df = load_data(os.path.join(DATA_DIR, "dev.csv"))
-
-    # Capture row IDs in the exact order load_data returns them (original CSV order).
-    # build_dataset iterates df.iterrows() in this same order — no shuffle.
-    # trainer.predict() uses SequentialSampler (no shuffle) per HF Trainer contract.
-    # We assert length and zip positionally, which is safe given SequentialSampler,
-    # and then write in dev_df's original row order so the .txt aligns with the gold CSV.
-    dev_ids_in_order = dev_df["ID"].tolist()
-
     dev_dataset = build_dataset(dev_df, tokenizer, preprocessor, max_length)
 
     predictions = trainer.predict(dev_dataset)
     pred_ids_raw = np.argmax(predictions.predictions, axis=-1)
 
-    # Positional assertion: DataLoader must not have dropped or reordered rows.
+    # Order contract: trainer.predict() uses SequentialSampler (no shuffle).
+    # This is documented HF Trainer behaviour for predict/eval — the DataLoader
+    # for prediction datasets is always sequential. build_dataset also preserves
+    # df row order (iterates df.iterrows() positionally). So pred_ids_raw[i]
+    # corresponds to dev_df.iloc[i].
+    #
+    # The length assertion below is the real safety net: it catches the one
+    # failure mode that could silently corrupt output — dropped rows due to
+    # dataloader_drop_last=True. (We don't set that, but this makes it loud.)
     if len(pred_ids_raw) != len(dev_df):
         raise RuntimeError(
             f"Prediction count mismatch: got {len(pred_ids_raw)} predictions "
@@ -394,18 +394,11 @@ def train(
             f"check dataloader_drop_last or dataset length."
         )
 
-    # Build ID → label map from the positional pairing (SequentialSampler guarantee).
-    id_to_pred = {
-        dev_ids_in_order[i]: ID2LABEL[int(pred_ids_raw[i])]
-        for i in range(len(dev_ids_in_order))
-    }
-
-    # Write in dev_df's original CSV row order (the order the gold CSV uses).
-    pred_labels = [id_to_pred[row_id] for row_id in dev_ids_in_order]
+    pred_labels = [ID2LABEL[int(p)] for p in pred_ids_raw]  # positional, matches dev_df order
 
     # ── Write outputs ─────────────────────────────────────────────────────
     write_pred_csv(dev_df, pred_labels, model_key, pred_csv)
-    write_pred_txt(pred_labels, pred_txt)          # ← labels in original dev.csv row order
+    write_pred_txt(pred_labels, pred_txt)  # one label per line, same row order as dev.csv
     print(f"  Written: {pred_csv}")
     print(f"  Written: {pred_txt}")
 
