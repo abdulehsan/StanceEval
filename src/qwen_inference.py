@@ -60,7 +60,7 @@ RAW_LOG_PATH = os.path.join(LOG_DIR, "qwen25_72b_zeroshot_raw.jsonl")
 PRED_CSV_PATH = os.path.join(PRED_DIR, "qwen25_72b_zeroshot_dev_preds.csv")
 PRED_TXT_PATH = os.path.join(PRED_DIR, "qwen25_72b_zeroshot_dev_preds.txt")
 
-MODEL_ID = "Qwen/Qwen2.5-72B-Instruct:preferred"
+MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
 BASE_URL = "https://router.huggingface.co/v1"
 
 VALID_LABELS = set(LABEL2ID.keys())
@@ -141,7 +141,6 @@ async def call_model(
     text: str,
     framing: str,
     semaphore: asyncio.Semaphore,
-    model_id: str,
     max_retries: int = 3,
 ) -> dict:
     """Make one API call with retry-backoff. Returns a log dict."""
@@ -158,7 +157,7 @@ async def call_model(
                 response = await loop.run_in_executor(
                     None,
                     lambda: client.chat.completions.create(
-                        model=model_id,
+                        model=MODEL_ID,
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_msg},
@@ -201,14 +200,12 @@ async def run_inference(
     df,
     framing: str,
     concurrency: int,
-    api_key: str,
-    base_url: str,
-    model_id: str,
+    hf_token: str,
 ) -> list[dict]:
     """Run async inference on all rows in df. Returns list of log dicts."""
     from openai import OpenAI
 
-    client = OpenAI(base_url=base_url, api_key=api_key)
+    client = OpenAI(base_url=BASE_URL, api_key=hf_token)
     semaphore = asyncio.Semaphore(concurrency)
 
     tasks = [
@@ -219,7 +216,6 @@ async def run_inference(
             row["text"],
             framing,
             semaphore,
-            model_id,
         )
         for _, row in df.iterrows()
     ]
@@ -241,29 +237,17 @@ async def run_inference(
 def main():
     args = parse_args()
 
-    # ── Load credentials from .env ──────────────────────────────────────────
+    # ── Load HF_TOKEN from .env ──────────────────────────────────────────
     try:
         from dotenv import load_dotenv
         load_dotenv(os.path.join(_ROOT, ".env"))
     except ImportError:
-        pass  # dotenv not installed; check environment variables directly
+        pass  # dotenv not installed; HF_TOKEN must be set in environment
 
-    azure_url = os.environ.get("AZURE_QWEN_URL", "").strip()
-    azure_key = os.environ.get("AZURE_QWEN_KEY", "").strip()
-
-    if azure_url and azure_key:
-        print("Using Azure AI Studio serverless endpoint...")
-        base_url = azure_url
-        api_key = azure_key
-        model_id = "Qwen-2.5-72B-Instruct"  # Azure's deployed endpoint model ID
-    else:
-        # Fall back to Hugging Face Router
-        base_url = BASE_URL
-        api_key = os.environ.get("HF_TOKEN", "").strip()
-        model_id = MODEL_ID
-        if not api_key:
-            print("❌ Error: No credentials found. Please set either AZURE_QWEN_URL and AZURE_QWEN_KEY, or HF_TOKEN in your .env file.")
-            sys.exit(1)
+    hf_token = os.environ.get("HF_TOKEN", "").strip()
+    if not hf_token:
+        print("❌ HF_TOKEN not found. Add it to your .env file or set it as an environment variable.")
+        sys.exit(1)
 
     # ── Load dev data ─────────────────────────────────────────────────────
     print(f"\nLoading data/dev.csv ...")
@@ -287,12 +271,11 @@ def main():
     print(f"  Framing: {args.framing}")
     print(f"  Rows: {len(run_df)}")
     print(f"  Concurrency: {args.concurrency}")
-    print(f"  Endpoint: {base_url}")
-    print(f"  Model ID: {model_id}")
+    print(f"  Model: {MODEL_ID}")
 
     # ── Run inference ─────────────────────────────────────────────────────
     start = time.time()
-    results = asyncio.run(run_inference(run_df, args.framing, args.concurrency, api_key, base_url, model_id))
+    results = asyncio.run(run_inference(run_df, args.framing, args.concurrency, hf_token))
     elapsed = time.time() - start
     print(f"\n  Finished in {elapsed:.1f}s ({elapsed/len(results):.2f}s/row)")
 
