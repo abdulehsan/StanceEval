@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import io
 import json
 import os
 import random
@@ -34,6 +35,10 @@ import re
 import sys
 import time
 from typing import Optional
+
+# Force UTF-8 output on Windows to avoid charmap encoding errors
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 sys.path.insert(0, os.path.dirname(__file__))
 from data_utils import (

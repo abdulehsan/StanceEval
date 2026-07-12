@@ -31,11 +31,16 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import os
 import subprocess
 import sys
 import warnings
 from typing import Optional
+
+# Force UTF-8 output on Windows to avoid charmap encoding errors
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import numpy as np
 import torch
