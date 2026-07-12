@@ -1,0 +1,29 @@
+# StanceEval-2026 Baseline — Requirements
+# Install with: pip install -r requirements.txt
+# (inside the stanceeval-venv virtual environment)
+
+# Core ML stack
+transformers>=4.40
+torch>=2.2
+datasets>=2.19
+accelerate>=0.30
+
+# AraBERT preprocessor (provides ArabertPreprocessor)
+arabert
+
+# Farasa segmentation — only needed for bert-base-arabertv2 (requires Java runtime)
+# Install only when running that variant: pip install farasapy
+# farasapy
+
+# API client for Qwen inference via HF router (OpenAI-compatible endpoint)
+openai>=1.30
+
+# Data handling
+scikit-learn>=1.4
+pandas>=2.0
+
+# Environment variable loading (.env file)
+python-dotenv
+
+# Already in stdlib (no install needed):
+# asyncio, json, csv, subprocess, tempfile, shutil, re, argparse, random, time

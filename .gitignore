@@ -1,1 +1,29 @@
+# Secrets
 .env
+
+# Virtual environment
+stanceeval-venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# AraBERT checkpoints (large binary files — delete losers after dev comparison)
+checkpoints/
+
+# Qwen raw logs (large JSONL — keep locally, don't push)
+qwen_raw_logs/
+
+# Editor/OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Temp eval directories created by evaluate.py
+Evaluation Script/extracted_submission/
