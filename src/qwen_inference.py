@@ -67,11 +67,11 @@ PRED_DIR = os.path.join(_ROOT, "predictions")
 LOG_DIR = os.path.join(_ROOT, "qwen_raw_logs")
 
 DEV_CSV_PATH = os.path.join(DATA_DIR, "dev.csv")
-RESULTS_PATH = os.path.join(PRED_DIR, "results_qwen3.6_27b.csv")
-RAW_LOG_PATH = os.path.join(LOG_DIR, "results_qwen3.6_27b_raw.jsonl")
+RESULTS_PATH = os.path.join(PRED_DIR, "results_qwen3_32b.csv")
+RAW_LOG_PATH = os.path.join(LOG_DIR, "results_qwen3_32b_raw.jsonl")
 
 # ── Model / API constants ─────────────────────────────────────────────────────
-MODEL_ID = "qwen/qwen3.6-27b"  # updated for 27b comparison run
+MODEL_ID = "qwen/qwen3-32b"  # updated for 32b run with new system prompt
 
 # Non-thinking mode params (Groq model card recommendation for qwen/qwen3-32b):
 TEMPERATURE = 0.7
@@ -100,9 +100,7 @@ RESULTS_FIELDNAMES = [
 
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
-# Reused from the existing stance-label schema in evaluate.py / arabert_finetune.py.
-# Single-word label only — no JSON wrapper (different from the old HF qwen25 script).
-SYSTEM_PROMPT = (
+PREVIOUS_SYSTEM_PROMPT = (
     "You are an expert annotator for Arabic stance detection. "
     "Given an Arabic tweet and a target topic, classify the writer's stance toward "
     "that target as exactly one of three labels:\n\n"
@@ -113,6 +111,42 @@ SYSTEM_PROMPT = (
     "infer a stance from tone alone if the underlying position isn't clear.\n\n"
     "Respond with ONLY a single word: Favor, Against, or None. "
     "No explanation, no punctuation, no other text."
+)
+
+SYSTEM_PROMPT = (
+    "You are an expert annotator for Arabic stance detection.\n\n"
+
+    "Your task is to determine the writer's stance toward a specified target topic "
+    "based on the overall meaning of the Arabic tweet.\n\n"
+
+    "Before assigning a label, carefully reason about the tweet:\n"
+    "1. Identify the target topic.\n"
+    "2. Determine whether the writer expresses an opinion.\n"
+    "3. Identify who or what the opinion is directed toward.\n"
+    "4. Distinguish the stance toward the target from opinions about other people, "
+    "organizations, events, policies, implementations, or related entities.\n"
+    "5. If multiple entities or viewpoints are mentioned, determine the writer's "
+    "stance only toward the specified target.\n"
+    "6. Base your decision on the complete meaning and context of the tweet rather "
+    "than isolated words or overall sentiment.\n"
+    "7. Do not assume that negative sentiment implies an Against stance or that "
+    "positive sentiment implies a Favor stance. The stance depends on whether the "
+    "opinion is directed toward the target itself.\n"
+    "8. If the tweet discusses consequences, criticisms, sarcasm, rhetorical "
+    "questions, or indirect references, infer the writer's underlying position "
+    "toward the target whenever it is reasonably supported by the tweet.\n"
+    "9. Choose None only when the stance toward the target is genuinely absent, "
+    "unclear, neutral, or cannot be reasonably inferred.\n\n"
+
+    "Assign exactly one of the following labels:\n"
+    "- Favor: The writer expresses support for or a positive stance toward the target.\n"
+    "- Against: The writer expresses opposition to or a negative stance toward the target.\n"
+    "- None: The writer expresses no identifiable stance toward the target.\n\n"
+
+    "Respond with exactly one word and nothing else:\n"
+    "Favor\n"
+    "Against\n"
+    "None"
 )
 
 

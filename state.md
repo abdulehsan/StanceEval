@@ -107,7 +107,8 @@ Primary evaluation metric: **Overall Favg2** (Macro-F1 score over Favor and Agai
 | Model / API Provider | COVID-19 Favg2 | Digital Favg2 | Women Favg2 | Overall Favg2 | Overall Favg3 | Accuracy | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | **Gemma 4 31B** (Cerebras) | **0.8857** | **0.8583** | **0.9654** | **0.9249** | **0.8235** | **88%** | **Completed** |
-| **Qwen 3 32B** (Groq) | 0.7141 | **0.8583** | 0.9178 | **0.8485** | 0.7273 | 79% | **Completed** |
+| **Qwen 3 32B** (Groq, original prompt) | 0.7141 | **0.8583** | 0.9178 | **0.8485** | 0.7273 | 79% | **Completed** |
+| **Qwen 3 32B** (Groq, new prompt) | 0.7529 | 0.7681 | 0.8904 | **0.8424** | 0.7225 | 79% | **Completed** |
 | **Qwen 3.6 27B** (Groq) | 0.7048 | 0.6875 | 0.9227 | **0.8270** | 0.7365 | 78% | **Completed** |
 
 ---
