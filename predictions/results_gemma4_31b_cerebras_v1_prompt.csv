@@ -35,7 +35,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 33,Covid Vaccine,Against,Against,gemma-4-31b,True,Against
 34,Covid Vaccine,Against,Against,gemma-4-31b,True,Against
 35,Women empowerment,Against,Against,gemma-4-31b,True,Against
-36,Digital Transformation,None,Against,gemma-4-31b,True,Against
+36,Digital Transformation,None,None,gemma-4-31b,True,None
 37,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
 38,Covid Vaccine,Against,Against,gemma-4-31b,True,Against
 39,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
@@ -45,8 +45,8 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 43,Covid Vaccine,Favor,Favor,gemma-4-31b,True,Favor
 44,Women empowerment,Against,Against,gemma-4-31b,True,Against
 45,Women empowerment,Against,Against,gemma-4-31b,True,Against
-46,Women empowerment,None,Favor,gemma-4-31b,True,Favor
-47,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
+46,Women empowerment,None,None,gemma-4-31b,True,None
+47,Digital Transformation,Favor,None,gemma-4-31b,True,None
 48,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
 49,Women empowerment,Favor,Favor,gemma-4-31b,True,Favor
 50,Covid Vaccine,Favor,Against,gemma-4-31b,True,Against
@@ -68,7 +68,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 66,Digital Transformation,Favor,None,gemma-4-31b,True,None
 67,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
 68,Women empowerment,Against,Against,gemma-4-31b,True,Against
-69,Digital Transformation,Against,Favor,gemma-4-31b,True,Favor
+69,Digital Transformation,Against,Against,gemma-4-31b,True,Against
 70,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
 71,Women empowerment,Favor,Favor,gemma-4-31b,True,Favor
 72,Digital Transformation,Favor,Favor,gemma-4-31b,True,Favor
@@ -86,9 +86,9 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 98,Covid Vaccine,None,None,gemma-4-31b,True,None
 100,Women empowerment,Favor,Favor,gemma-4-31b,True,Favor
 101,Women empowerment,None,None,gemma-4-31b,True,None
-102,Covid Vaccine,None,Against,gemma-4-31b,True,Against
+102,Covid Vaccine,None,None,gemma-4-31b,True,None
 103,Covid Vaccine,Favor,Favor,gemma-4-31b,True,Favor
-104,Women empowerment,Against,Against,gemma-4-31b,True,Against
+104,Women empowerment,Against,None,gemma-4-31b,True,None
 105,Women empowerment,Favor,Favor,gemma-4-31b,True,Favor
 106,Women empowerment,Favor,Favor,gemma-4-31b,True,Favor
 108,Covid Vaccine,Favor,Favor,gemma-4-31b,True,Favor

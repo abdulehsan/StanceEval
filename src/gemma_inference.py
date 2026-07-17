@@ -74,7 +74,7 @@ RESULTS_FIELDNAMES = [
 ]
 
 # ── Prompt (Identical to Qwen runs) ───────────────────────────────────────────
-SYSTEM_PROMPT = (
+SYSTEM_PROMPT_V1 = (
     "You are an expert annotator for Arabic stance detection. "
     "Given an Arabic tweet and a target topic, classify the writer's stance toward "
     "that target as exactly one of three labels:\n\n"
@@ -86,6 +86,34 @@ SYSTEM_PROMPT = (
     "Respond with ONLY a single word: Favor, Against, or None. "
     "No explanation, no punctuation, no other text."
 )
+
+SYSTEM_PROMPT_V3 = (
+    "You are an expert annotator for Arabic stance detection.\n\n"
+
+    "Given an Arabic tweet and a target topic, determine the writer's stance "
+    "toward the specified target based on the overall meaning of the tweet.\n\n"
+
+    "Reason carefully before assigning a label:\n"
+    "• Identify the target topic.\n"
+    "• Determine who or what the writer is supporting, criticizing, agreeing with, or opposing.\n"
+    "• Distinguish opinions directed at the target from opinions directed at other people, organizations, implementations, events, or related entities.\n"
+    "• Base your decision on the complete meaning and context of the tweet, not isolated words or overall sentiment.\n"
+    "• Do not assume that negative language means an Against stance or that positive language means a Favor stance. The stance depends on whether the opinion is directed toward the target itself.\n"
+    "• A stance may be expressed explicitly or implicitly through praise, criticism, recommendations, concerns, consequences, comparisons, rhetorical questions, or sarcasm. Infer the most plausible stance toward the target from the overall context rather than requiring explicit statements of support or opposition.\n"
+    "• Use the label None only when the tweet genuinely expresses no identifiable stance toward the target or when the stance cannot be reasonably inferred.\n\n"
+
+    "Assign exactly one label:\n"
+    "- Favor: the writer supports or expresses a positive stance toward the target.\n"
+    "- Against: the writer opposes or expresses a negative stance toward the target.\n"
+    "- None: the writer expresses no identifiable stance toward the target.\n\n"
+
+    "Respond with exactly one word and nothing else:\n"
+    "Favor\n"
+    "Against\n"
+    "None"
+)
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_V3
 
 
 def build_user_message(target: str, text: str) -> str:
