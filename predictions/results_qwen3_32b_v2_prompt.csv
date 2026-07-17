@@ -46,7 +46,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 44,Women empowerment,Against,Against,qwen/qwen3-32b,True,Against
 45,Women empowerment,Against,Against,qwen/qwen3-32b,True,Against
 46,Women empowerment,None,Favor,qwen/qwen3-32b,True,Favor
-47,Digital Transformation,Favor,Favor,qwen/qwen3-32b,True,Favor
+47,Digital Transformation,Favor,None,qwen/qwen3-32b,True,None
 48,Digital Transformation,Favor,Favor,qwen/qwen3-32b,True,Favor
 49,Women empowerment,Favor,Favor,qwen/qwen3-32b,True,Favor
 50,Covid Vaccine,Favor,Against,qwen/qwen3-32b,True,Against
@@ -60,9 +60,9 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 58,Covid Vaccine,Against,Against,qwen/qwen3-32b,True,Against
 59,Women empowerment,Favor,Favor,qwen/qwen3-32b,True,Favor
 60,Digital Transformation,Favor,Favor,qwen/qwen3-32b,True,Favor
-61,Digital Transformation,Favor,Favor,qwen/qwen3-32b,True,Favor
+61,Digital Transformation,Favor,None,qwen/qwen3-32b,True,None
 62,Women empowerment,Favor,Favor,qwen/qwen3-32b,True,Favor
-63,Women empowerment,Favor,Favor,qwen/qwen3-32b,True,Favor
+63,Women empowerment,Favor,None,qwen/qwen3-32b,True,None
 64,Digital Transformation,Favor,Favor,qwen/qwen3-32b,True,Favor
 65,Digital Transformation,Favor,Favor,qwen/qwen3-32b,True,Favor
 66,Digital Transformation,Favor,None,qwen/qwen3-32b,True,None
@@ -77,7 +77,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 76,Women empowerment,Against,Against,qwen/qwen3-32b,True,Against
 82,Covid Vaccine,Favor,Favor,qwen/qwen3-32b,True,Favor
 84,Women empowerment,Favor,Favor,qwen/qwen3-32b,True,Favor
-85,Covid Vaccine,Against,None,qwen/qwen3-32b,True,None
+85,Covid Vaccine,Against,Against,qwen/qwen3-32b,True,Against
 86,Women empowerment,Against,Against,qwen/qwen3-32b,True,Against
 87,Women empowerment,Against,Against,qwen/qwen3-32b,True,Against
 94,Covid Vaccine,Against,Against,qwen/qwen3-32b,True,Against
