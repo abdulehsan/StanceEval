@@ -11,6 +11,7 @@ Evaluation results on the Mawqif-v2 development set. Favg2 is the primary evalua
 | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
 | *Organizer Reference: Qwen 2.5 (72B, zero-shot)* | — | — | — | **0.8425** | — | Baseline |
 | *Organizer Reference: AraBERT-twitter* | — | — | — | **0.8390** | — | Baseline |
+| **Gemma 4 31B** (Cerebras, zero-shot) | 0.9066 | 0.7685 | 0.8996 | **0.8848** | 0.7820 | Completed (best overall score) |
 | **AraBERTv0.2-Twitter-Large** (90/10 split) | 0.8313 | 0.7282 | 0.8581 | **0.8346** | 0.7157 | Completed (best checkpoint) |
 | **AraBERTv0.2-Twitter-Large** (100% data) | 0.8231 | 0.7167 | 0.8602 | **0.8326** | 0.7233 | Completed |
 | **AraBERTv0.2-Twitter-Base** (Run 2) | 0.7808 | 0.7694 | 0.8627 | **0.8243** | 0.7129 | Completed |

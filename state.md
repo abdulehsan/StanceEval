@@ -101,7 +101,7 @@ Primary evaluation metric: **Overall Favg2** (Macro-F1 score over Favor and Agai
 | **AraBERTv0.2-Twitter-Base** (Run 2) | 0.7808 | 0.7694 | 0.8627 | **82.43** | 0.7129 | **Completed** |
 | **AraBERTv0.2-Twitter-Base** (Run 1) | 0.7825 | 0.7666 | 0.8480 | **82.08** | 0.7139 | **Completed** |
 | **AraBERTv0.2-Base** (Non-Twitter) | 0.7231 | 0.7160 | 0.8375 | **78.55** | 0.6677 | **Completed** |
-| **Gemma 4 31B** (Cerebras, zero-shot) | - | - | - | - | - | **Pending Run** (4h expected) |
+| **Gemma 4 31B** (Cerebras, zero-shot) | 0.9066 | 0.7685 | 0.8996 | **0.8848** | 0.7820 | **Completed** — best overall score |
 
 ### Zero-Shot LLM Subset runs (100-row stratified subset)
 | Model / API Provider | COVID-19 Favg2 | Digital Favg2 | Women Favg2 | Overall Favg2 | Overall Favg3 | Accuracy | Status |
