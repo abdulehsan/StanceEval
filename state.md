@@ -13,6 +13,7 @@ StanceEval/
 ├── .env                                # Active. Private tokens storage (GROQ_API_KEY, CEREBRAS_API_KEY).
 ├── .gitignore                          # Active. Ignores venvs, credentials, and model checkpoints.
 ├── error_analysis.md                  # Active. Fine-tuning error analysis report for AraBERT runs.
+├── README.md                          # Active. Project readme documenting files, setup, running, and results.
 ├── requirements.txt                   # Active. Python package requirements.
 ├── results_summary.csv                # Active. Summary database of final scores (auto-updated by fine-tune).
 ├── stanceeval2026_baseline_spec.md    # Active. Baseline specifications and prompt instructions.
@@ -39,15 +40,15 @@ StanceEval/
 │   ├── results_qwen3_32b.csv          # Archived Qwen 3 32B (Groq) 100-row stratified subset predictions.
 │   ├── results_qwen3.6_27b.csv        # Qwen 3.6 27B (Groq) 100-row stratified subset predictions.
 │   ├── results_gemma4_31b_cerebras.csv# Gemma 4 31B (Cerebras) 100-row stratified subset predictions.
-│   └── qwen3_32b_groq_100row_results.csv # Redundant duplicate. [Candidate for Archiving/Deletion]
+│   └── results_gemma4_31b_cerebras_full.csv # Gemma 4 31B (Cerebras) full 619-row dev set predictions.
 ├── qwen_raw_logs/                      # Active. Raw API request/response completion logs.
 │   ├── results_qwen3_32b_raw.jsonl
 │   ├── results_qwen3.6_27b_raw.jsonl
 │   ├── results_gemma4_31b_cerebras_raw.jsonl
-│   ├── qwen25_72b_zeroshot_raw.jsonl  # Leftover from HF Router attempt. [Candidate for Deletion]
-│   └── qwen3_32b_groq_raw.jsonl       # Redundant duplicate. [Candidate for Archiving/Deletion]
+│   └── results_gemma4_31b_cerebras_full_raw.jsonl # Raw logs for full Gemma run.
 └── src/                                # Active. Source code modules.
     ├── arabert_finetune.py            # Core AraBERT fine-tuning workflow script.
+    ├── check_partial_progress.py      # Standalone progress checker for in-flight Gemma dev runs.
     ├── data_utils.py                  # Data loading, splitting, and preprocessing utilities.
     ├── evaluate.py                    # Script to evaluate saved AraBERT checkpoints against dev set.
     ├── gemma_inference.py             # Pipeline for running Gemma 4 zero-shot inference on Cerebras.
@@ -79,10 +80,10 @@ Our project uses three distinct methodologies. Each progresses from raw input to
 
 ### Method 3: Gemma Zero-Shot via Cerebras (4 31B)
 1. **Data Loading:** `src/gemma_inference.py` loads `data/dev.csv` via `data_utils.load_data()`.
-2. **Resampling / Stratification:** Reuses the identical stratified 100-row selection logic (COVID-19 Vaccine: 33, Digital Transformation: 33, Women Empowerment: 34) ensuring perfect alignment.
-3. **Inference Loop:** The script connects to Cerebras API using `reasoning_effort="none"`, `temperature=1.0`, and `top_p=0.95`. Calls are sequentially throttled at 5 RPM using a hard floor delay of 12.0 seconds. If `x-ratelimit-remaining-requests-minute` falls to 1, a 60-second backoff sleep occurs.
-4. **Incremental Storage:** Completed items write instantly to `predictions/results_gemma4_31b_cerebras.csv` and `qwen_raw_logs/results_gemma4_31b_cerebras_raw.jsonl`.
-5. **Evaluation:** Predictions are read back using `keep_default_na=False`. `metrics.favg2()` and `metrics.per_topic_and_overall_metrics()` calculate subset score statistics.
+2. **Resampling / Stratification:** If running subset (default), reuses the identical stratified 100-row selection logic (COVID-19 Vaccine: 33, Digital Transformation: 33, Women Empowerment: 34) ensuring perfect alignment. If running full dev set (`--full`), processes all 619 rows in their original order.
+3. **Inference Loop:** The script connects to Cerebras API using `reasoning_effort="none"`, `temperature=1.0`, and `top_p=0.95`. Calls are sequentially throttled at 5 RPM (using a hard floor delay of 12.0 seconds) and capped at 150 requests per hour (using rolling hourly tracking to sleep until oldest requests age out). In case of minute budget depletion, it sleeps 30-60 seconds.
+4. **Incremental Storage:** Completed items write instantly to `predictions/results_gemma4_31b_cerebras_full.csv` (or `results_gemma4_31b_cerebras.csv` for the subset) and corresponding log `results_gemma4_31b_cerebras_full_raw.jsonl` (or `results_gemma4_31b_cerebras_raw.jsonl` for the subset) with timestamp annotations to support state-aware resumability across restarts.
+5. **Evaluation:** Predictions are read back using `keep_default_na=False`. `metrics.favg2()` and `metrics.per_topic_and_overall_metrics()` calculate full set or subset score statistics.
 
 ---
 
@@ -100,6 +101,7 @@ Primary evaluation metric: **Overall Favg2** (Macro-F1 score over Favor and Agai
 | **AraBERTv0.2-Twitter-Base** (Run 2) | 0.7808 | 0.7694 | 0.8627 | **82.43** | 0.7129 | **Completed** |
 | **AraBERTv0.2-Twitter-Base** (Run 1) | 0.7825 | 0.7666 | 0.8480 | **82.08** | 0.7139 | **Completed** |
 | **AraBERTv0.2-Base** (Non-Twitter) | 0.7231 | 0.7160 | 0.8375 | **78.55** | 0.6677 | **Completed** |
+| **Gemma 4 31B** (Cerebras, zero-shot) | - | - | - | - | - | **Pending Run** (4h expected) |
 
 ### Zero-Shot LLM Subset runs (100-row stratified subset)
 | Model / API Provider | COVID-19 Favg2 | Digital Favg2 | Women Favg2 | Overall Favg2 | Overall Favg3 | Accuracy | Status |
@@ -129,3 +131,7 @@ To ensure experimental integrity before the July 18 deadline, we conducted a pro
 *   **Audit Check 5: NaN Coercion ("None" stance bug) Prevention**
     *   *Finding:* **PASS**
     *   *Verification:* Ran a global workspace grep search for `read_csv`. Every active script (`evaluate.py` line 34, `data_utils.py` line 91, `qwen_inference.py` line 515, `gemma_inference.py` line 425) includes the `keep_default_na=False` guard.
+*   **Audit Check 6: Summary Database Integrity (Duplicate check)**
+    *   *Finding:* **WARNING**
+    *   *Verification:* Inspected `results_summary.csv` and found a duplicate row for `arabertv02_twitter_base` (Run 1) at lines 2 and 3. Checked that it does not affect runtime behaviour but is recommended to clean up.
+

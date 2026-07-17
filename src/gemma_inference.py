@@ -206,6 +206,55 @@ def compute_pace_delay(headers: dict) -> float:
     return base_delay
 
 
+def _parse_reset_duration(s: str) -> float:
+    """Parse a reset-time header like '1.234s', '60s', or '1m30.5s' → seconds."""
+    if not s:
+        return 0.0
+    s = s.strip()
+    # Fast path: plain float/int with optional 's' or 'ms'
+    if s.endswith("s") and not s.endswith("ms"):
+        try:
+            return float(s[:-1])
+        except ValueError:
+            pass
+    if s.endswith("ms"):
+        try:
+            return float(s[:-2]) / 1000.0
+        except ValueError:
+            pass
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    
+    # General: minutes and seconds
+    m = re.fullmatch(r"(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?", s)
+    if m and (m.group(1) or m.group(2)):
+        return float(m.group(1) or 0) * 60 + float(m.group(2) or 0)
+    return 0.0
+
+
+def load_request_timestamps(raw_log_path: str) -> list[float]:
+    """Load timestamps of requests made in the last 60 minutes from JSONL log."""
+    timestamps = []
+    if not os.path.exists(raw_log_path):
+        return timestamps
+    now = time.time()
+    with open(raw_log_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                ts = obj.get("timestamp")
+                if ts and (now - ts < 3600):
+                    timestamps.append(ts)
+            except Exception:
+                pass
+    return sorted(timestamps)
+
+
 def load_completed_indices(results_path: str) -> set[int]:
     if not os.path.exists(results_path):
         return set()
@@ -313,8 +362,22 @@ def call_cerebras_once(
     return result, {}
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Zero-shot stance detection using Gemma 4 31B via Cerebras."
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Run on the full 619-row dev set instead of the 100-row stratified subset."
+    )
+    return parser.parse_args()
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main() -> None:
+    args = parse_args()
+
     # Load env variables
     try:
         from dotenv import load_dotenv
@@ -333,8 +396,19 @@ def main() -> None:
     dev_df = load_data(DEV_CSV_PATH)
     print(f"  Loaded {len(dev_df)} rows.")
 
-    # Stratified selection
-    run_df, selected_indices, path_taken = select_100_rows(dev_df)
+    # Resolve scope, paths and selection
+    if args.full:
+        run_df = dev_df.copy()
+        selected_indices = list(run_df.index)
+        path_taken = "full (all 619 rows, original order)"
+        results_path = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras_full.csv")
+        raw_log_path = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_full_raw.jsonl")
+        print(f"\n── Path taken: {path_taken} ──")
+        print(f"Total rows to process: {len(run_df)}")
+    else:
+        run_df, selected_indices, path_taken = select_100_rows(dev_df)
+        results_path = RESULTS_PATH
+        raw_log_path = RAW_LOG_PATH
 
     # Initialize client
     from cerebras.cloud.sdk import Cerebras
@@ -345,11 +419,18 @@ def main() -> None:
     os.makedirs(LOG_DIR, exist_ok=True)
 
     # Resumability check
-    completed = load_completed_indices(RESULTS_PATH)
+    completed = load_completed_indices(results_path)
     if completed:
         print(f"\n📂 Resuming: {len(completed)} rows already done (up to index {max(completed) if completed else 0}).")
     else:
         print(f"\n🆕 Starting fresh run.")
+
+    # Load rolling request timestamps from JSONL to enforce hourly cap (150 req/hour)
+    request_timestamps = load_request_timestamps(raw_log_path)
+    if request_timestamps:
+        window_start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(request_timestamps[0]))
+        print(f"📊 Loaded {len(request_timestamps)} request timestamps from last 60 minutes from {raw_log_path}.")
+        print(f"   Rolling window starts at: {window_start_time} (oldest request in window)")
 
     # Inference config summary
     print(f"── Inference config ──")
@@ -357,15 +438,16 @@ def main() -> None:
     print(f"   reasoning_effort: none  (non-thinking mode)")
     print(f"   temperature={TEMPERATURE}  top_p={TOP_P}")
     print(f"   max_tokens:       {MAX_TOKENS}")
-    print(f"   Sequential calls; rate pacing designed for 5 RPM")
-    print(f"   Results CSV:      {RESULTS_PATH}")
-    print(f"   Raw log:          {RAW_LOG_PATH}")
+    print(f"   Sequential calls; rate pacing designed for 5 RPM and 150 RPH limits")
+    print(f"   Results CSV:      {results_path}")
+    print(f"   Raw log:          {raw_log_path}")
     print()
 
     total = len(run_df)
     new_calls = 0
     skipped = 0
     _header_keys_logged = False
+    rl_headers = {}
 
     for position, (_, row) in enumerate(run_df.iterrows(), start=1):
         row_index = int(row.name)
@@ -378,13 +460,44 @@ def main() -> None:
         text   = str(row["text"])
         gold   = str(row.get("stance", ""))
 
+        # Hourly rate limiting tracking check
+        now = time.time()
+        request_timestamps = [ts for ts in request_timestamps if now - ts < 3600]
+
+        if len(request_timestamps) >= 150:
+            oldest_ts = request_timestamps[0]
+            # Sleep until the oldest request ages out
+            sleep_time = oldest_ts + 3600 - now + 1.0
+            
+            # Check for hourly reset headers in case they exist
+            if rl_headers:
+                reset_req_hour_str = rl_headers.get("x-ratelimit-reset-requests-hour") or rl_headers.get("x-ratelimit-reset-requests-day")
+                if reset_req_hour_str:
+                    try:
+                        header_sleep = _parse_reset_duration(str(reset_req_hour_str))
+                        if header_sleep > sleep_time:
+                            sleep_time = header_sleep + 1.0
+                    except Exception:
+                        pass
+
+            resume_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() + sleep_time))
+            print(f"\n⏳ HOURLY RATE LIMIT REACHED (150 requests in last 60 minutes).")
+            print(f"   Entering cooldown: sleeping for {sleep_time:.1f} seconds (~{sleep_time/60:.1f} minutes).")
+            print(f"   Script will resume at: {resume_time}\n")
+            time.sleep(sleep_time)
+
+            # Refresh current time and request timestamps window after sleep
+            now = time.time()
+            request_timestamps = [ts for ts in request_timestamps if now - ts < 3600]
+
         print(f"  [{position}/{total}] row_index={row_index} | target={target!r}")
 
         result, rl_headers = call_cerebras_once(client, row_index, target, text)
+        request_timestamps.append(time.time())
         result["gold_label"] = gold
 
         # Incremental write
-        append_result_row(RESULTS_PATH, result)
+        append_result_row(results_path, result)
         completed.add(row_index)
         new_calls += 1
 
@@ -397,8 +510,9 @@ def main() -> None:
             "predicted_label": result["predicted_label"],
             "model_id":        result["model_id"],
             "parse_success":   result["parse_success"],
+            "timestamp":       time.time(),
         }
-        with open(RAW_LOG_PATH, "a", encoding="utf-8") as lf:
+        with open(raw_log_path, "a", encoding="utf-8") as lf:
             lf.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
         print(
@@ -414,7 +528,7 @@ def main() -> None:
                 print(f"       {k}: {rl_headers[k]}")
             _header_keys_logged = True
 
-        # Pacing sleep
+        # Pacing sleep (per-minute RPM ceiling)
         delay = compute_pace_delay(rl_headers)
         if delay > 0:
             time.sleep(delay)
@@ -422,7 +536,7 @@ def main() -> None:
     print(f"\n── Inference complete: {new_calls} new calls, {skipped} skipped ──\n")
 
     # Step 5: Evaluation
-    results_df = pd.read_csv(RESULTS_PATH, encoding="utf-8", keep_default_na=False)
+    results_df = pd.read_csv(results_path, encoding="utf-8", keep_default_na=False)
     results_df = results_df[results_df["row_index"].isin(selected_indices)].copy()
 
     if results_df.empty:
@@ -465,13 +579,19 @@ def main() -> None:
     ov = metrics.get("Overall", {})
     print(f"{'Overall':<28} {ov.get('Favg2', float('nan')):>8.4f} {ov.get('Favg3', float('nan')):>8.4f}")
 
-    print(f"\nResults CSV : {RESULTS_PATH}")
-    print(f"Raw JSONL   : {RAW_LOG_PATH}")
-    print(
-        f"\n⚠️ NOTE: Metrics computed on {len(results_df)}/619 rows (100-row subset)."
-        f"\n    Do NOT add to results_summary.csv — not comparable to full-dev scores."
-        f"\n    Row-selection path: {path_taken}"
-    )
+    print(f"\nResults CSV : {results_path}")
+    print(f"Raw JSONL   : {raw_log_path}")
+    if args.full:
+        print(
+            f"\n✅ Metrics computed on the full {len(results_df)} dev rows."
+            f"\n    Compare these results directly against other full-dev runs in results_summary.csv."
+        )
+    else:
+        print(
+            f"\n⚠️ NOTE: Metrics computed on {len(results_df)}/619 rows (100-row subset)."
+            f"\n    Do NOT add to results_summary.csv — not comparable to full-dev scores."
+            f"\n    Row-selection path: {path_taken}"
+        )
 
 
 if __name__ == "__main__":

@@ -46,12 +46,13 @@ StanceEval/
 │   ├── arabertv02_twitter_large_dev_preds.txt
 │   ├── arabertv02_twitter_large_fulldata_dev_preds.csv
 │   ├── arabertv02_twitter_large_fulldata_dev_preds.txt
-│   ├── qwen3_32b_groq_100row_results.csv
 │   ├── results_gemma4_31b_cerebras.csv
+│   ├── results_gemma4_31b_cerebras_full.csv
 │   ├── results_qwen3.6_27b.csv
 │   └── results_qwen3_32b.csv
 ├── src/
 │   ├── arabert_finetune.py
+│   ├── check_partial_progress.py
 │   ├── data_utils.py
 │   ├── evaluate.py
 │   ├── gemma_inference.py
@@ -88,6 +89,7 @@ StanceEval/
 
 ### Source Directory
 *   **[src/arabert_finetune.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/arabert_finetune.py)**: Fine-tunes AraBERT variants for Arabic stance detection, supporting aubmindlab base/large models. Orchestrates joint target training on an internal 90/10 stratified split, class-weighted cross-entropy loss, and post-training dev set evaluation.
+*   **[src/check_partial_progress.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/check_partial_progress.py)**: Standalone, read-only progress checker that reads whatever predictions currently exist and reports target-wise and overall metrics so far without locking files or calling official evaluators.
 *   **[src/data_utils.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/data_utils.py)**: Canonicalizes raw target strings to match dev.csv, loads and validates train/dev CSVs, produces a stratified 90/10 internal split for early stopping, computes inverse-frequency class weights, and writes prediction outputs in both CSV (error analysis) and txt (official eval script) formats.
 *   **[src/evaluate.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/evaluate.py)**: Script to run the official competition evaluation script on saved prediction files and update results_summary.csv.
 *   **[src/gemma_inference.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/gemma_inference.py)**: Executes zero-shot stance detection using Gemma 4 31B via Cerebras API on a stratified 100-row subset of the dev set.
@@ -193,10 +195,11 @@ python src/qwen_inference.py [--check_only]
 *   `--check_only`: Runs row selection and target distribution check only, then exits.
 
 #### Gemma (Cerebras)
-Runs Gemma 4 31B inference on the 100-row stratified dev subset:
+Runs Gemma 4 31B inference on the dev set:
 ```bash
-python src/gemma_inference.py
+python src/gemma_inference.py [--full]
 ```
+*   `--full`: Run on the full 619-row dev set instead of the 100-row stratified subset.
 
 ### 5. Run Official Evaluator Verbatim
 If you want to run the official evaluation script directly:
