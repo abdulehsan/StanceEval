@@ -27,3 +27,7 @@ Thumbs.db
 
 # Temp eval directories created by evaluate.py
 Evaluation Script/extracted_submission/
+
+error_analysis.md
+stanceeval2026_baseline_spec.md
+state.md

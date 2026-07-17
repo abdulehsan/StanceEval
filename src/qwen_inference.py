@@ -1,103 +1,123 @@
 """
-qwen_inference.py — Zero-shot stance detection using Qwen 2.5 72B via HF Router.
+qwen_inference.py — Zero-shot stance detection using Qwen3-32B via Groq.
 
-Runs on the 619 dev.csv rows (or a subset for A/B testing prompt framings).
-No training — purely inference. Logs every prompt+response to JSONL.
+Compares qwen/qwen3-32b (Groq, zero-shot) against our fine-tuned AraBERT
+checkpoints on the Mawqif-v2 dev set for StanceEval-2026.
+
+Runs on exactly 100 rows selected with balanced target coverage (Step 1 checks
+whether the first 100 rows are balanced; if not, takes ~33 per target instead).
 
 Usage:
-    # A/B test: run 50 rows with English framing first
-    python src/qwen_inference.py --framing en --subset 50
+    # Step 1 only — distribution check, no inference:
+    python src/qwen_inference.py --check_only
 
-    # Then run Arabic framing on the same 50 rows
-    python src/qwen_inference.py --framing ar --subset 50
+    # Full run (100 rows, stratified if needed):
+    python src/qwen_inference.py
 
-    # Full run (619 rows) after committing to a framing
-    python src/qwen_inference.py --framing en
+    # Resume from last completed row (reads existing results CSV automatically):
+    python src/qwen_inference.py
 
 Requirements:
-    - HF_TOKEN in .env (loaded via python-dotenv)
-    - pip install openai python-dotenv
+    - GROQ_API_KEY in .env (loaded via python-dotenv; never printed or committed)
+    - pip install groq python-dotenv pandas scikit-learn
 
-Costs: ~250K input / 10K output tokens ≈ $0.05-0.15 at DeepInfra rates.
-Check your HF billing page after the first 50-row subset run.
+Model: qwen/qwen3-32b (Groq, Preview)
+Non-thinking mode params: temperature=0.7, top_p=0.8, top_k=20, min_p=0
+Toggle: reasoning_effort="none"  (confirmed from Groq docs; "none"/"default" only)
+
+Rate limiting: fully header-driven.  x-ratelimit-remaining-{tokens,requests} and
+x-ratelimit-reset-{tokens,requests} are read from every response; the next call
+is delayed accordingly.  On a 429 the retry-after header is respected.
+No hardcoded sleep values.
+
+Output:
+    predictions/qwen3_32b_groq_100row_results.csv  (incremental, one row/call)
+    qwen_raw_logs/qwen3_32b_groq_raw.jsonl         (full prompt+response log)
+
+Resumability: completed row_index values are read from the results CSV at startup;
+already-done rows are skipped without re-calling the API.
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
 import csv
 import io
 import json
 import os
-import random
 import re
 import sys
 import time
 from typing import Optional
+
+import pandas as pd
 
 # Force UTF-8 output on Windows to avoid charmap encoding errors
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 sys.path.insert(0, os.path.dirname(__file__))
-from data_utils import (
-    LABEL2ID,
-    load_data,
-    write_pred_csv,
-    write_pred_txt,
-)
-from metrics import per_topic_and_overall_metrics, run_official_eval
+from data_utils import LABEL2ID, load_data
+from metrics import favg2, per_topic_and_overall_metrics
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
 DATA_DIR = os.path.join(_ROOT, "data")
 PRED_DIR = os.path.join(_ROOT, "predictions")
 LOG_DIR = os.path.join(_ROOT, "qwen_raw_logs")
-RESULTS_CSV = os.path.join(_ROOT, "results_summary.csv")
 
-RAW_LOG_PATH = os.path.join(LOG_DIR, "qwen25_72b_zeroshot_raw.jsonl")
-PRED_CSV_PATH = os.path.join(PRED_DIR, "qwen25_72b_zeroshot_dev_preds.csv")
-PRED_TXT_PATH = os.path.join(PRED_DIR, "qwen25_72b_zeroshot_dev_preds.txt")
+DEV_CSV_PATH = os.path.join(DATA_DIR, "dev.csv")
+RESULTS_PATH = os.path.join(PRED_DIR, "results_qwen3.6_27b.csv")
+RAW_LOG_PATH = os.path.join(LOG_DIR, "results_qwen3.6_27b_raw.jsonl")
 
-MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
-BASE_URL = "https://router.huggingface.co/v1"
+# ── Model / API constants ─────────────────────────────────────────────────────
+MODEL_ID = "qwen/qwen3.6-27b"  # updated for 27b comparison run
 
-VALID_LABELS = set(LABEL2ID.keys())
+# Non-thinking mode params (Groq model card recommendation for qwen/qwen3-32b):
+TEMPERATURE = 0.7
+TOP_P = 0.8
+TOP_K = 20
+MIN_P = 0
+MAX_TOKENS = 10  # single-word label only
+
+# Sampling constants
+N_ROWS = 100
+ROWS_PER_TARGET = 33  # 33 + 33 + 34 = 100 across 3 targets
+
+VALID_LABELS: set[str] = set(LABEL2ID.keys())  # {"Against", "Favor", "None"}
+TARGETS = ["Covid Vaccine", "Digital Transformation", "Women empowerment"]
+
+# ── Results CSV schema ────────────────────────────────────────────────────────
+RESULTS_FIELDNAMES = [
+    "row_index",      # original 0-based index in dev.csv (preserved for traceability)
+    "target",
+    "gold_label",
+    "predicted_label",
+    "model_id",       # exact model string returned by the API in each response
+    "parse_success",  # True if response was a clean single-word label
+    "raw_response",
+]
 
 
-# ── Prompt templates ──────────────────────────────────────────────────────────
-
-SYSTEM_EN = """You are an expert annotator for Arabic stance detection. Given an Arabic tweet and a target topic, classify the writer's stance toward that target as exactly one of three labels:
-
-- Favor: the writer expresses support for or a positive position toward the target
-- Against: the writer expresses opposition to or a negative position toward the target
-- None: no clear stance — neutral, off-topic, or ambiguous. This includes cases where sarcasm makes the literal tone misleading about the writer's actual position — do not infer a stance from tone alone if the underlying position isn't clear.
-
-Respond with ONLY a JSON object in this exact format, no other text:
-{"stance": "Favor"} or {"stance": "Against"} or {"stance": "None"}"""
-
-# Arabic system prompt — JSON output schema stays in English for reliable parsing
-SYSTEM_AR = """أنت خبير في التعليق التلقائي على المواقف في النصوص العربية. بناءً على تغريدة عربية وموضوع مستهدف، صنّف موقف كاتب التغريدة من الموضوع المستهدف كواحد فقط من ثلاثة تسميات:
-
-- Favor: يُعبّر الكاتب عن دعمه أو موقف إيجابي تجاه الموضوع
-- Against: يُعبّر الكاتب عن معارضته أو موقف سلبي تجاه الموضوع
-- None: لا يوجد موقف واضح — محايد أو خارج الموضوع أو غامض. يشمل ذلك الحالات التي يكون فيها السخرية مضللة حول الموقف الفعلي للكاتب — لا تستنتج الموقف من النبرة وحدها إذا كان الموقف الفعلي غير واضح.
-
-أجب فقط بكائن JSON بهذا الشكل بالضبط، بدون أي نص إضافي:
-{"stance": "Favor"} أو {"stance": "Against"} أو {"stance": "None"}"""
+# ── Prompt ────────────────────────────────────────────────────────────────────
+# Reused from the existing stance-label schema in evaluate.py / arabert_finetune.py.
+# Single-word label only — no JSON wrapper (different from the old HF qwen25 script).
+SYSTEM_PROMPT = (
+    "You are an expert annotator for Arabic stance detection. "
+    "Given an Arabic tweet and a target topic, classify the writer's stance toward "
+    "that target as exactly one of three labels:\n\n"
+    "- Favor: the writer expresses support for or a positive position toward the target\n"
+    "- Against: the writer expresses opposition to or a negative position toward the target\n"
+    "- None: no clear stance — neutral, off-topic, or ambiguous. This includes cases where "
+    "sarcasm makes the literal tone misleading about the writer's actual position — do not "
+    "infer a stance from tone alone if the underlying position isn't clear.\n\n"
+    "Respond with ONLY a single word: Favor, Against, or None. "
+    "No explanation, no punctuation, no other text."
+)
 
 
 def build_user_message(target: str, text: str) -> str:
     return f"Target: {target}\nTweet: {text}"
-
-
-def get_system_prompt(framing: str) -> str:
-    if framing == "en":
-        return SYSTEM_EN
-    elif framing == "ar":
-        return SYSTEM_AR
-    raise ValueError(f"Unknown framing: {framing!r}. Use 'en' or 'ar'.")
 
 
 # ── Response parsing ──────────────────────────────────────────────────────────
@@ -105,303 +125,462 @@ def get_system_prompt(framing: str) -> str:
 def parse_response(raw: str) -> tuple[str, bool]:
     """Parse a model response and return (stance_label, parse_success).
 
-    Tries JSON first, then regex fallback, then defaults to 'None'.
+    parse_success=True  → clean single-word hit (reliable parse).
+    parse_success=False → fallback match; prediction is still made but flagged.
     """
     raw = raw.strip()
 
-    # Attempt 1: parse as JSON
+    # Attempt 1: exact word match (expected happy path for single-word prompt)
+    if raw in VALID_LABELS:
+        return raw, True
+
+    # Attempt 2: case-insensitive exact match
+    for label in VALID_LABELS:
+        if raw.lower() == label.lower():
+            return label, True
+
+    # Attempt 3: bare label substring anywhere (degraded — flag as parse_success=False)
+    for label in ["Favor", "Against", "None"]:
+        if label.lower() in raw.lower():
+            return label, False
+
+    # Attempt 4: JSON fallback (old format, unlikely with this prompt but kept for safety)
     try:
         obj = json.loads(raw)
         stance = str(obj.get("stance", "")).strip()
         if stance in VALID_LABELS:
-            return stance, True
+            return stance, False  # not a clean single-word response
     except (json.JSONDecodeError, AttributeError):
         pass
-
-    # Attempt 2: regex — find "stance": "Favor|Against|None"
     match = re.search(r'"stance"\s*:\s*"(Favor|Against|None)"', raw)
     if match:
-        return match.group(1), True
+        return match.group(1), False
 
-    # Attempt 3: bare label anywhere in the response
-    for label in ["Favor", "Against", "None"]:
-        if label.lower() in raw.lower():
-            return label, False  # found but not via JSON — flag as parse_success=False
-
-    # Fallback
+    # Fallback — keep as None and flag
     return "None", False
 
 
-# ── Async inference ───────────────────────────────────────────────────────────
+# ── Step 1: Stratified 100-row selection ─────────────────────────────────────
 
-async def call_model(
+def select_100_rows(dev_df: pd.DataFrame) -> tuple[pd.DataFrame, list[int], str]:
+    """Select the 100 rows for inference with balanced target coverage.
+
+    Checks the first 100 rows of the dev set as-is. If every target has at
+    least 20 rows out of 100 (roughly balanced), uses them in original order.
+    Otherwise, takes the first 33/33/34 rows from each target group and
+    concatenates in original index order.
+
+    Returns:
+        (run_df, selected_original_indices, path_taken_description)
+    """
+    first_100 = dev_df.head(N_ROWS)
+    counts = first_100["target"].value_counts()
+
+    print(f"\n── Step 1: Target distribution — first {N_ROWS} rows (original order) ──")
+    print(counts.to_string())
+
+    min_count = min(counts.get(t, 0) for t in TARGETS)
+    balanced_threshold = 30  # ≥ 30 rows per target (≥ 30% of 100) → "reasonably balanced"
+                               # 23 Covid rows in the first 100 is a 2:1 skew → triggers stratify
+
+    if min_count >= balanced_threshold:
+        path = "as-is (first 100 rows, original order — no resampling needed)"
+        run_df = first_100.copy()
+    else:
+        path = "stratified: first 33 rows from Covid Vaccine, 33 from Digital Transformation, 34 from Women empowerment"
+        per_target_n = {
+            "Covid Vaccine":          33,
+            "Digital Transformation": 33,
+            "Women empowerment":      34,
+        }
+        parts = []
+        for target, n in per_target_n.items():
+            slice_ = dev_df[dev_df["target"] == target].head(n)
+            print(f"  → {target}: rows {list(slice_.index[:3])} … (first {n})")
+            parts.append(slice_)
+        run_df = pd.concat(parts).sort_index()  # restore original index order
+
+    selected_indices = list(run_df.index)
+
+    print(f"\n── Path taken: {path} ──")
+    print(f"Selected original row indices (first 5): {selected_indices[:5]}")
+    print(f"Selected original row indices (last 5):  {selected_indices[-5:]}")
+    print(f"Total rows selected: {len(selected_indices)}")
+    print(f"\nResulting target distribution:")
+    print(run_df["target"].value_counts().to_string())
+    print(f"\nResulting gold stance distribution:")
+    print(run_df["stance"].value_counts().to_string())
+
+    return run_df, selected_indices, path
+
+
+# ── Rate-limit header utilities ───────────────────────────────────────────────
+
+def _parse_reset_duration(s: str) -> float:
+    """Parse a Groq reset-time header like '1.234s', '60s', or '1m30.5s' → seconds."""
+    if not s:
+        return 0.0
+    s = s.strip()
+    # Fast path: plain seconds e.g. "1.5s"
+    if re.fullmatch(r"\d+(?:\.\d+)?s", s):
+        return float(s[:-1])
+    # Milliseconds e.g. "500ms"
+    if re.fullmatch(r"\d+(?:\.\d+)?ms", s):
+        return float(s[:-2]) / 1000.0
+    # General: optional minutes + optional seconds e.g. "1m30.5s" or "2m"
+    m = re.fullmatch(r"(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?", s)
+    if m and (m.group(1) or m.group(2)):
+        return float(m.group(1) or 0) * 60 + float(m.group(2) or 0)
+    return 0.0
+
+
+def compute_pace_delay(headers: dict) -> float:
+    """Read rate-limit headers and return how long to sleep before the next call.
+
+    Strategy:
+      - If remaining tokens < 500 (≈ 1 short response), wait for token reset.
+      - If remaining requests < 2, wait for request reset.
+      - Otherwise, return 0.0 (proceed immediately).
+    """
+    try:
+        remaining_tok = int(headers.get("x-ratelimit-remaining-tokens", 10_000))
+    except (ValueError, TypeError):
+        remaining_tok = 10_000
+    try:
+        remaining_req = int(headers.get("x-ratelimit-remaining-requests", 100))
+    except (ValueError, TypeError):
+        remaining_req = 100
+
+    reset_tok_str = headers.get("x-ratelimit-reset-tokens", "0s")
+    reset_req_str = headers.get("x-ratelimit-reset-requests", "0s")
+
+    print(
+        f"    RL — remaining tokens: {remaining_tok} (reset in {reset_tok_str})"
+        f"  |  remaining requests: {remaining_req} (reset in {reset_req_str})"
+    )
+
+    if remaining_tok < 500:
+        wait = _parse_reset_duration(reset_tok_str)
+        print(f"    ⚠️  Token budget low ({remaining_tok} left) → sleeping {wait:.2f}s for token reset")
+        return wait
+
+    if remaining_req < 2:
+        wait = _parse_reset_duration(reset_req_str)
+        print(f"    ⚠️  Request budget low ({remaining_req} left) → sleeping {wait:.2f}s for request reset")
+        return wait
+
+    return 0.0
+
+
+# ── Resumability ──────────────────────────────────────────────────────────────
+
+def load_completed_indices(results_path: str) -> set[int]:
+    """Return the set of row_index values already written to the results CSV."""
+    if not os.path.exists(results_path):
+        return set()
+    completed: set[int] = set()
+    with open(results_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            try:
+                completed.add(int(row["row_index"]))
+            except (KeyError, ValueError):
+                pass
+    return completed
+
+
+def append_result_row(results_path: str, row: dict) -> None:
+    """Incrementally append one result row to the CSV (creates header if new file)."""
+    write_header = not os.path.exists(results_path)
+    with open(results_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=RESULTS_FIELDNAMES)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({k: row[k] for k in RESULTS_FIELDNAMES})
+
+
+# ── Single API call ───────────────────────────────────────────────────────────
+
+def call_groq_once(
     client,
-    row_id: int,
+    row_index: int,
     target: str,
     text: str,
-    framing: str,
-    semaphore: asyncio.Semaphore,
-    model_id: str,
     max_retries: int = 3,
-) -> dict:
-    """Make one API call with retry-backoff. Returns a log dict."""
-    system_prompt = get_system_prompt(framing)
+) -> tuple[dict, dict]:
+    """Make one synchronous Groq API call with retry logic.
+
+    Uses with_raw_response to capture rate-limit headers from every response.
+
+    Returns:
+        (result_dict, rate_limit_headers)
+        result_dict keys match RESULTS_FIELDNAMES (gold_label filled by caller).
+    """
     user_msg = build_user_message(target, text)
-    prompt_str = f"System: {system_prompt}\n\nUser: {user_msg}"
 
-    last_error = None
     for attempt in range(max_retries):
-        async with semaphore:
-            try:
-                loop = asyncio.get_event_loop()
-                # openai client is sync; run in thread pool to avoid blocking
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: client.chat.completions.create(
-                        model=model_id,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_msg},
-                        ],
-                        temperature=0,
-                        max_tokens=20,
-                    ),
+        try:
+            raw_resp = client.chat.completions.with_raw_response.create(
+                model=MODEL_ID,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user",   "content": user_msg},
+                ],
+                temperature=TEMPERATURE,
+                top_p=TOP_P,
+                max_tokens=MAX_TOKENS,
+                reasoning_effort="none",  # non-thinking mode — confirmed param name
+                # extra_body omitted: Groq rejects top_k and min_p with 400.
+                # Only standard OpenAI-compat params (temperature, top_p) accepted.
+            )
+
+            rl_headers = dict(raw_resp.headers)
+            completion = raw_resp.parse()
+
+            raw_text = completion.choices[0].message.content or ""
+            model_returned = completion.model  # exact model string from API (may differ from request)
+            predicted, parse_ok = parse_response(raw_text)
+
+            result = {
+                "row_index":       row_index,
+                "target":          target,
+                "gold_label":      "",  # filled by caller
+                "predicted_label": predicted,
+                "model_id":        model_returned,
+                "parse_success":   parse_ok,
+                "raw_response":    raw_text,
+            }
+            return result, rl_headers
+
+        except Exception as exc:
+            exc_str = str(exc)
+
+            # 429 rate-limit error — read retry-after from the exception message
+            if "429" in exc_str or "rate_limit" in exc_str.lower():
+                # Groq embeds retry-after in the error body; try to extract it
+                retry_after = 60.0  # safe default
+                m = re.search(r"(?:retry.after|retry_after)[^\d]*(\d+(?:\.\d+)?)", exc_str, re.IGNORECASE)
+                if m:
+                    retry_after = float(m.group(1))
+                print(
+                    f"    ⚠️  429 on row {row_index} (attempt {attempt + 1}/{max_retries}) — "
+                    f"sleeping {retry_after:.1f}s (retry-after from error)"
                 )
-                raw_response = response.choices[0].message.content or ""
-                parsed_stance, parse_success = parse_response(raw_response)
-                return {
-                    "ID": row_id,
-                    "prompt_framing": framing,
-                    "prompt": prompt_str,
-                    "raw_response": raw_response,
-                    "parsed_stance": parsed_stance,
-                    "parse_success": parse_success,
-                }
-            except Exception as e:
-                last_error = e
-                # Exponential backoff: 2^attempt seconds
-                wait = 2 ** attempt
-                print(f"  ⚠️  Row {row_id} attempt {attempt+1}/{max_retries} failed: {e}. Retrying in {wait}s ...")
-                await asyncio.sleep(wait)
+                time.sleep(retry_after)
+                continue  # retry same attempt count
 
-    # All retries exhausted
-    print(f"  ❌ Row {row_id} failed after {max_retries} attempts: {last_error}")
-    return {
-        "ID": row_id,
-        "prompt_framing": framing,
-        "prompt": prompt_str,
-        "raw_response": "",
-        "parsed_stance": "None",
-        "parse_success": False,
-        "error": str(last_error),
+            # Other transient errors — exponential backoff
+            wait = 2 ** attempt
+            print(f"    ❌ Row {row_index} attempt {attempt + 1}/{max_retries}: {exc!r} — retrying in {wait}s")
+            if attempt < max_retries - 1:
+                time.sleep(wait)
+
+    # All retries exhausted — return a failure sentinel
+    print(f"    ❌ Row {row_index}: all {max_retries} attempts failed; recording as 'None'.")
+    result = {
+        "row_index":       row_index,
+        "target":          target,
+        "gold_label":      "",
+        "predicted_label": "None",
+        "model_id":        MODEL_ID,
+        "parse_success":   False,
+        "raw_response":    "ERROR: max retries exceeded",
     }
-
-
-async def run_inference(
-    df,
-    framing: str,
-    concurrency: int,
-    api_key: str,
-    base_url: str,
-    model_id: str,
-) -> list[dict]:
-    """Run async inference on all rows in df. Returns list of log dicts."""
-    from openai import OpenAI
-
-    client = OpenAI(base_url=base_url, api_key=api_key)
-    semaphore = asyncio.Semaphore(concurrency)
-
-    tasks = [
-        call_model(
-            client,
-            row["ID"],
-            row["target"],
-            row["text"],
-            framing,
-            semaphore,
-            model_id,
-        )
-        for _, row in df.iterrows()
-    ]
-
-    results = []
-    total = len(tasks)
-    for i, coro in enumerate(asyncio.as_completed(tasks)):
-        result = await coro
-        results.append(result)
-        if (i + 1) % 50 == 0 or (i + 1) == total:
-            successes = sum(1 for r in results if r.get("parse_success"))
-            print(f"  Progress: {i+1}/{total} | Parse success: {successes}/{i+1}")
-
-    return results
+    return result, {}
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def main():
+def main() -> None:
     args = parse_args()
 
-    # ── Load credentials from .env ──────────────────────────────────────────
+    # ── Load GROQ_API_KEY from .env ─────────────────────────────────────────
     try:
         from dotenv import load_dotenv
         load_dotenv(os.path.join(_ROOT, ".env"))
     except ImportError:
-        pass  # dotenv not installed; check environment variables directly
+        pass  # fall through — key may already be in environment
 
-    fireworks_key = os.environ.get("FIREWORKS_API_KEY", "").strip()
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not groq_key:
+        print("❌ GROQ_API_KEY not found in .env or environment. Cannot proceed.")
+        sys.exit(1)
+    print("✅ GROQ_API_KEY loaded.")  # never printed, only confirmed present
 
-    if fireworks_key:
-        print("Using Fireworks AI serverless endpoint...")
-        base_url = "https://api.fireworks.ai/inference/v1"
-        api_key = fireworks_key
-        model_id = "accounts/fireworks/models/qwen2p5-72b-instruct"
-    else:
-        # Fall back to Hugging Face Router
-        base_url = BASE_URL
-        api_key = os.environ.get("HF_TOKEN", "").strip()
-        model_id = MODEL_ID
-        if not api_key:
-            print("❌ Error: No credentials found. Please set either FIREWORKS_API_KEY or HF_TOKEN in your .env file.")
-            sys.exit(1)
-
-    # ── Load dev data ─────────────────────────────────────────────────────
-    print(f"\nLoading data/dev.csv ...")
-    dev_df = load_data(os.path.join(DATA_DIR, "dev.csv"))
+    # ── Load dev set ────────────────────────────────────────────────────────
+    print(f"\nLoading {DEV_CSV_PATH} …")
+    dev_df = load_data(DEV_CSV_PATH)
     print(f"  Loaded {len(dev_df)} rows.")
 
-    # ── Subset selection ──────────────────────────────────────────────────
-    if args.subset and args.subset < len(dev_df):
-        print(f"\nSubset mode: running on {args.subset} rows (seed=42).")
-        print("  Use the same subset for both framings when A/B testing.")
-        rng = random.Random(42)
-        indices = rng.sample(range(len(dev_df)), args.subset)
-        indices_sorted = sorted(indices)
-        run_df = dev_df.iloc[indices_sorted].reset_index(drop=True)
-        is_subset = True
-    else:
-        run_df = dev_df.reset_index(drop=True)
-        is_subset = False
+    # ── Step 1: distribution check + row selection ──────────────────────────
+    run_df, selected_indices, path_taken = select_100_rows(dev_df)
 
-    print(f"\nRunning Qwen 2.5 72B zero-shot inference ...")
-    print(f"  Framing: {args.framing}")
-    print(f"  Rows: {len(run_df)}")
-    print(f"  Concurrency: {args.concurrency}")
-    print(f"  Endpoint: {base_url}")
-    print(f"  Model ID: {model_id}")
+    if args.check_only:
+        print("\n── --check_only flag set: stopping after Step 1. ──")
+        return
 
-    # ── Run inference ─────────────────────────────────────────────────────
-    start = time.time()
-    results = asyncio.run(run_inference(run_df, args.framing, args.concurrency, api_key, base_url, model_id))
-    elapsed = time.time() - start
-    print(f"\n  Finished in {elapsed:.1f}s ({elapsed/len(results):.2f}s/row)")
+    # ── Init Groq client ────────────────────────────────────────────────────
+    try:
+        from groq import Groq
+    except ImportError:
+        print("❌ groq package not installed. Run: pip install groq")
+        sys.exit(1)
 
-    # Sort results by original row order (asyncio.as_completed returns in completion order)
-    id_to_result = {r["ID"]: r for r in results}
+    client = Groq(api_key=groq_key)
 
-    # ── Log to JSONL ──────────────────────────────────────────────────────
+    # ── Ensure output dirs exist ─────────────────────────────────────────────
+    os.makedirs(PRED_DIR, exist_ok=True)
     os.makedirs(LOG_DIR, exist_ok=True)
-    mode = "a" if os.path.exists(RAW_LOG_PATH) else "w"
-    with open(RAW_LOG_PATH, mode, encoding="utf-8") as f:
-        for _, row in run_df.iterrows():
-            result = id_to_result.get(row["ID"], {})
-            f.write(json.dumps(result, ensure_ascii=False) + "\n")
-    print(f"\n  Raw log written to: {RAW_LOG_PATH}")
 
-    # ── Parse stats ───────────────────────────────────────────────────────
-    total = len(results)
-    successes = sum(1 for r in results if r.get("parse_success"))
-    print(f"  Parse success rate: {successes}/{total} ({100*successes/total:.1f}%)")
-
-    label_dist = {}
-    for r in results:
-        label_dist[r["parsed_stance"]] = label_dist.get(r["parsed_stance"], 0) + 1
-    print(f"  Label distribution: {label_dist}")
-
-    # ── Write predictions (full run only) ─────────────────────────────────
-    if not is_subset:
-        ordered_preds = [id_to_result[row["ID"]]["parsed_stance"] for _, row in run_df.iterrows()]
-        write_pred_csv(run_df, ordered_preds, f"qwen25_72b_{args.framing}", PRED_CSV_PATH)
-        write_pred_txt(ordered_preds, PRED_TXT_PATH)
-        print(f"\n  Predictions written:")
-        print(f"    {PRED_CSV_PATH}")
-        print(f"    {PRED_TXT_PATH}")
-
-        # ── Evaluate ──────────────────────────────────────────────────────
-        print("\n  Running official evaluation ...")
-        try:
-            official = run_official_eval(
-                os.path.join(DATA_DIR, "dev.csv"),
-                PRED_TXT_PATH,
-            )
-            print("  Official scores:")
-            for k, v in sorted(official.items()):
-                print(f"    {k}: {v:.6f}")
-        except Exception as e:
-            print(f"  ⚠️  Official eval failed: {e}")
-
-        # ── results_summary.csv ───────────────────────────────────────────
-        run_df["predicted_stance"] = ordered_preds
-        local_metrics = per_topic_and_overall_metrics(
-            run_df, true_col="stance", pred_col="predicted_stance"
-        )
-        _append_results_row(f"qwen25_72b_{args.framing}", local_metrics)
+    # ── Resumability ────────────────────────────────────────────────────────
+    completed = load_completed_indices(RESULTS_PATH)
+    if completed:
+        print(f"\n📂 Resuming: {len(completed)} rows already done (up to index {max(completed)}).")
     else:
-        print(f"\n  (Subset run — predictions not written. Run without --subset for full output.)")
-        print(f"  Review the parse success rate and label distribution above.")
-        print(f"  If framing looks good, commit to it and run without --subset.")
+        print(f"\n🆕 Starting fresh run.")
+
+    # ── Inference config summary ────────────────────────────────────────────
+    print(f"── Inference config ──")
+    print(f"   Model:            qwen3.6-27b")
+    print(f"   reasoning_effort: none  (non-thinking mode)")
+    print(f"   temperature={TEMPERATURE}  top_p={TOP_P}")
+    print(f"   max_tokens:       {MAX_TOKENS}")
+    print(f"   Note: top_k and min_p omitted — rejected by Groq API (400)")
+    print(f"   Sequential calls; rate pacing from response headers")
+    print(f"   Results CSV:      results_qwen3.6-27b.csv")
+    print(f"   Raw log:          raw_qwen3.6-27b.jsonl")
+    print()
+
+    total = len(run_df)
+    new_calls = 0
+    skipped = 0
+    _header_keys_logged = False  # log raw RL header keys once on first response
+
+    # ── Sequential inference loop ────────────────────────────────────────────
+    for position, (_, row) in enumerate(run_df.iterrows(), start=1):
+        row_index = int(row.name)  # original 0-based index in dev.csv
+
+        if row_index in completed:
+            skipped += 1
+            continue
+
+        target    = str(row["target"])
+        text      = str(row["text"])
+        gold      = str(row.get("stance", ""))
+
+        print(f"  [{position}/{total}] row_index={row_index} | target={target!r}")
+
+        result, rl_headers = call_groq_once(client, row_index, target, text)
+        result["gold_label"] = gold
+
+        # ── Incremental write (one row per call, never all-at-end) ───────────
+        append_result_row(RESULTS_PATH, result)
+        completed.add(row_index)
+        new_calls += 1
+
+        # ── JSONL raw log ────────────────────────────────────────────────────
+        log_entry = {
+            "row_index":       row_index,
+            "target":          target,
+            "gold_label":      gold,
+            "raw_response":    result["raw_response"],
+            "predicted_label": result["predicted_label"],
+            "model_id":        result["model_id"],
+            "parse_success":   result["parse_success"],
+        }
+        with open(RAW_LOG_PATH, "a", encoding="utf-8") as lf:
+            lf.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+
+        print(
+            f"    → pred={result['predicted_label']!r}  gold={gold!r}  "
+            f"model={result['model_id']!r}  parse_ok={result['parse_success']}"
+        )
+
+        # ── Log raw header keys once (first response only) ───────────────────
+        if rl_headers and not _header_keys_logged:
+            rl_keys = [k for k in rl_headers if "ratelimit" in k.lower()]
+            print(f"    ── Rate-limit header keys present in first response ──")
+            for k in sorted(rl_keys):
+                print(f"       {k}: {rl_headers[k]}")
+            _header_keys_logged = True
+
+        # ── Header-driven pacing ─────────────────────────────────────────────
+        if rl_headers:
+            delay = compute_pace_delay(rl_headers)
+            if delay > 0:
+                time.sleep(delay)
+
+    print(f"\n── Inference complete: {new_calls} new calls, {skipped} skipped ──\n")
+
+    # ── Step 5: Evaluation ──────────────────────────────────────────────────
+    results_df = pd.read_csv(RESULTS_PATH, encoding="utf-8", keep_default_na=False)
+    # Restrict to the exact rows selected for this run (handles partial-resume edge cases)
+    results_df = results_df[results_df["row_index"].isin(selected_indices)].copy()
+
+    if results_df.empty:
+        print("⚠️  No results found to evaluate. Check the results CSV.")
+        return
+
+    print(f"── Step 5: Evaluation on {len(results_df)} rows ──\n")
+
+    print("Predicted label distribution:")
+    print(results_df["predicted_label"].value_counts().to_string())
+    print("\nGold label distribution:")
+    print(results_df["gold_label"].value_counts().to_string())
+
+    # Accuracy
+    correct = (results_df["predicted_label"] == results_df["gold_label"]).sum()
+    accuracy = correct / len(results_df)
+    print(f"\nOverall accuracy: {correct}/{len(results_df)} = {accuracy:.4f}")
+
+    # Favg2 — reuses the existing favg2() from metrics.py (do not reimplement)
+    y_true = results_df["gold_label"].tolist()
+    y_pred = results_df["predicted_label"].tolist()
+    overall_f2 = favg2(y_true, y_pred)
+    print(f"Overall Favg2:    {overall_f2:.4f}")
+
+    # Per-target Favg2 / Favg3
+    results_df["true_stance"]      = results_df["gold_label"]
+    results_df["predicted_stance"] = results_df["predicted_label"]
+    metrics = per_topic_and_overall_metrics(
+        results_df,
+        true_col="true_stance",
+        pred_col="predicted_stance",
+        target_col="target",
+    )
+
+    print(f"\nPer-target metrics:")
+    print(f"{'Target':<28} {'Favg2':>8} {'Favg3':>8}")
+    print("-" * 48)
+    for key in sorted(metrics):
+        if key == "Overall":
+            continue
+        m = metrics[key]
+        print(f"{key:<28} {m['Favg2']:>8.4f} {m['Favg3']:>8.4f}")
+    print("-" * 48)
+    ov = metrics.get("Overall", {})
+    print(f"{'Overall':<28} {ov.get('Favg2', float('nan')):>8.4f} {ov.get('Favg3', float('nan')):>8.4f}")
+
+    print(f"\nResults CSV : {RESULTS_PATH}")
+    print(f"Raw JSONL   : {RAW_LOG_PATH}")
+    print(
+        f"\n⚠️  NOTE: Metrics computed on {len(results_df)}/619 rows (100-row subset)."
+        f"\n    Do NOT add to results_summary.csv — not comparable to full-dev scores."
+        f"\n    Row-selection path: {path_taken}"
+    )
 
 
-def _append_results_row(model_name: str, metrics: dict) -> None:
-    """Append row to results_summary.csv."""
-    fieldnames = [
-        "model_name",
-        "favg2_covid", "favg2_digital", "favg2_women", "favg2_overall",
-        "favg3_covid", "favg3_digital", "favg3_women", "favg3_overall",
-    ]
-    row = {"model_name": model_name}
-    target_key_map = {
-        "Covid Vaccine":          ("favg2_covid",   "favg3_covid"),
-        "Digital Transformation": ("favg2_digital", "favg3_digital"),
-        "Women empowerment":      ("favg2_women",   "favg3_women"),
-        "Overall":                ("favg2_overall", "favg3_overall"),
-    }
-    for target, (f2_key, f3_key) in target_key_map.items():
-        if target in metrics:
-            row[f2_key] = f"{metrics[target]['Favg2']:.6f}"
-            row[f3_key] = f"{metrics[target]['Favg3']:.6f}"
-        else:
-            row[f2_key] = row[f3_key] = ""
+# ── CLI ───────────────────────────────────────────────────────────────────────
 
-    write_header = not os.path.exists(RESULTS_CSV)
-    with open(RESULTS_CSV, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if write_header:
-            writer.writeheader()
-        writer.writerow(row)
-    print(f"  Appended results to {RESULTS_CSV}")
-
-
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Zero-shot stance detection with Qwen 2.5 72B via HF router."
+        description=(
+            "Zero-shot stance detection with Qwen3-32B (Groq) on 100 stratified dev rows."
+        )
     )
     parser.add_argument(
-        "--framing",
-        choices=["en", "ar"],
-        default="en",
-        help="Prompt language framing (default: en). A/B test on --subset 50 first.",
-    )
-    parser.add_argument(
-        "--subset",
-        type=int,
-        default=None,
-        help="Run on N rows only (for A/B testing prompt framings). Omit for full run.",
-    )
-    parser.add_argument(
-        "--concurrency",
-        type=int,
-        default=8,
-        help="Max concurrent API requests (default 8, spec recommends 5-10).",
+        "--check_only",
+        action="store_true",
+        help="Run Step 1 (distribution check + row selection) only, then stop.",
     )
     return parser.parse_args()
 
