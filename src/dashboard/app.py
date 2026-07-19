@@ -75,33 +75,42 @@ elif tab_choice == "2. Dataset EDA (dev.csv)":
 
 # Tab 3: Error Analysis
 elif tab_choice == "3. Model Error Analysis":
-    if dev_df is None:
-        st.error("Dev ground truth dataset (data/dev.csv) is required for error analysis but is missing.")
+    pred_files = get_available_prediction_files()
+    if not pred_files:
+        st.warning("No prediction CSV files found in the `predictions/` directory. Run inference first.")
     else:
-        pred_files = get_available_prediction_files()
-        if not pred_files:
-            st.warning("No prediction CSV files found in the `predictions/` directory. Run inference first.")
+        st.sidebar.subheader("Error Analysis Config")
+
+        gemma_full_filename = "results_gemma4_31b_cerebras_full.csv"
+        default_idx = pred_files.index(gemma_full_filename) if gemma_full_filename in pred_files else 0
+
+        selected_file = st.sidebar.selectbox(
+            "Select Model Predictions:",
+            options=pred_files,
+            index=default_idx
+        )
+
+        # Auto-detect source dataset from filename, but let user override
+        auto_source = "train" if "train" in selected_file.lower() else "dev"
+        source_choice = st.sidebar.radio(
+            "Source ground-truth file (must match predictions):",
+            options=["train", "dev"],
+            index=0 if auto_source == "train" else 1
+        )
+
+        source_df = train_df if source_choice == "train" else dev_df
+
+        st.write(f"📂 Analyzing predictions from: `{selected_file}`")
+        st.write(f"📎 Matched against: `{'train.csv' if source_choice == 'train' else 'dev.csv'}`")
+
+        if source_df is None:
+            st.error(f"data/{source_choice}.csv could not be loaded.")
         else:
-            # Let user choose which model predictions to inspect
-            st.sidebar.subheader("Error Analysis Config")
-            
-            # Default select full Gemma prediction if available
-            gemma_full_filename = "results_gemma4_31b_cerebras_full.csv"
-            default_idx = pred_files.index(gemma_full_filename) if gemma_full_filename in pred_files else 0
-            
-            selected_file = st.sidebar.selectbox(
-                "Select Model Predictions:",
-                options=pred_files,
-                index=default_idx
-            )
-            
-            st.write(f"📂 Analyzing predictions from: `{selected_file}`")
             pred_path = os.path.join(_ROOT, "predictions", selected_file)
-            
             try:
                 results_df = pd.read_csv(pred_path, keep_default_na=False)
                 if not results_df.empty:
-                    render_error_tab(results_df, dev_df)
+                    render_error_tab(results_df, source_df)
                 else:
                     st.warning(f"The selected prediction file `{selected_file}` is empty.")
             except Exception as e:
