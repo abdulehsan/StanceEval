@@ -75,7 +75,7 @@ RESULTS_FIELDNAMES = [
 ]
 
 # ── Prompt (Forced to V1 prompt) ───────────────────────────────────────────
-SYSTEM_PROMPT = (
+SYSTEM_PROMPT_V1 = (
     "You are an expert annotator for Arabic stance detection. "
     "Given an Arabic tweet and a target topic, classify the writer's stance toward "
     "that target as exactly one of three labels:\n\n"
@@ -87,6 +87,44 @@ SYSTEM_PROMPT = (
     "Respond with ONLY a single word: Favor, Against, or None. "
     "No explanation, no punctuation, no other text."
 )
+
+SYSTEM_PROMPT_V5 = (
+    "You are an expert annotator for Arabic stance detection. "
+    "Given an Arabic tweet and a target topic, classify the writer's stance toward "
+    "that target as exactly one of three labels:\n\n"
+
+    "- Favor: the writer expresses support for or a positive position toward the target\n"
+    "- Against: the writer expresses opposition to or a negative position toward the target\n"
+    "- None: no clear stance — neutral, off-topic, or ambiguous. This includes cases where "
+    "sarcasm makes the literal tone misleading about the writer's actual position, or where "
+    "the tweet only reports information without expressing the writer's own stance. Do not "
+    "infer a stance solely from emotional tone, sarcasm, or factual reporting when the "
+    "writer's position toward the target is not reasonably clear.\n\n"
+
+    "Examples:\n\n"
+
+    # Example 1: Implicit Stance
+    "Tweet: \"رسميًا صرت ملكة حجوزات تطعيم كورونا اتوقع باقي القطوه الي بالشارع م حجزت لها ههه\"\n"
+    "Target: لقاح كورونا\n"
+    "Stance: Favor\n\n"
+
+    # Example 2: Target Resolution
+    "Tweet: \"هناك من عاصر زمن تحرير السود من العبودية وهناك من عاصر زمن تمكين المرأة "
+    "واعطائها كامل حقوقها وشاء الله أن يكون زماننا زمن اعطاء الشواذ حقوقهم وهو الأسوأ حتى الآن "
+    "أتمنى ألا تطول صولتهم\"\n"
+    "Target: تمكين المرأة\n"
+    "Stance: None\n\n"
+
+    # Example 3: Reporting ≠ Stance
+    "Tweet: \"السديس يؤكد تفعيل التحول الإلكتروني في جميع تعاملات الرئاسة\"\n"
+    "Target: التحول الرقمي\n"
+    "Stance: None\n\n"
+
+    "Respond with ONLY a single word: Favor, Against, or None. "
+    "No explanation, no punctuation, no other text."
+)
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_V5
 
 def build_user_message(target: str, text: str) -> str:
     arabic_target = TARGET_AR.get(target, target)

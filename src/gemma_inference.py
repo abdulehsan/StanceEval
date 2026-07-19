@@ -44,8 +44,10 @@ PRED_DIR = os.path.join(_ROOT, "predictions")
 LOG_DIR = os.path.join(_ROOT, "qwen_raw_logs")  # Keep logs in same directory structure
 
 DEV_CSV_PATH = os.path.join(DATA_DIR, "dev.csv")
-RESULTS_PATH = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras.csv")
-RAW_LOG_PATH = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_raw.jsonl")
+# ── Output paths ──────────────────────────────────────────────────────────
+# NEW — separate from baseline, so resumability doesn't skip these rows
+RESULTS_PATH = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras_v4_fewshot.csv")
+RAW_LOG_PATH = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_v4_fewshot_raw.jsonl")
 
 # ── Model / API constants ─────────────────────────────────────────────────────
 MODEL_ID = "gemma-4-31b"
@@ -113,7 +115,30 @@ SYSTEM_PROMPT_V3 = (
     "None"
 )
 
-SYSTEM_PROMPT = SYSTEM_PROMPT_V3
+SYSTEM_PROMPT_V4 = (
+    "You are an expert annotator for Arabic stance detection. "
+    "Given an Arabic tweet and a target topic, classify the writer's stance toward "
+    "that target as exactly one of three labels:\n\n"
+    "- Favor: the writer expresses support for or a positive position toward the target\n"
+    "- Against: the writer expresses opposition to or a negative position toward the target\n"
+    "- None: no clear stance — neutral, off-topic, or ambiguous. This includes cases where "
+    "sarcasm makes the literal tone misleading about the writer's actual position — do not "
+    "infer a stance from tone alone if the underlying position isn't clear.\n\n"
+    "Examples:\n\n"
+    "Tweet: \"نعم الجائحة سرعت نحو التحول الإلكتروني وغيرت في سلوك المستهلكين لا شك. "
+    "من الممكن الإعتماد على التجارة الإلكترونية لكن من غير الممكن استبعاد متاجر (الطوب) "
+    "من المنظومة التجارية لأسباب حيوية للغاية مثل النشاط العمراني والبطالة.\"\n"
+    "Target: Digital Transformation\n"
+    "Stance: Favor\n\n"
+    "Tweet: \"ههههههههههههههه ماعليك زمن تمكين المرأة ماراح يسوون لك شي 😂\"\n"
+    "Target: Women empowerment\n"
+    "Stance: None\n\n"
+    "Respond with ONLY a single word: Favor, Against, or None. "
+    "No explanation, no punctuation, no other text."
+)
+
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_V4
 
 
 def build_user_message(target: str, text: str) -> str:
