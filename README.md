@@ -12,6 +12,7 @@ Evaluation results on the Mawqif-v2 development set. Favg2 is the primary evalua
 | *Organizer Reference: Qwen 2.5 (72B, zero-shot)* | — | — | — | **0.8425** | — | Baseline |
 | *Organizer Reference: AraBERT-twitter* | — | — | — | **0.8390** | — | Baseline |
 | **Gemma 4 31B** (Cerebras, zero-shot) | 0.9066 | 0.7685 | 0.8996 | **0.8848** | 0.7820 | Completed (best overall score) |
+| **Gemma 4 31B** (Cerebras, zero-shot, Arabic targets) | 0.9066 | 0.7785 | 0.8970 | **0.8844** | 0.7816 | Completed |
 | **AraBERTv0.2-Twitter-Large** (90/10 split) | 0.8313 | 0.7282 | 0.8581 | **0.8346** | 0.7157 | Completed (best checkpoint) |
 | **AraBERTv0.2-Twitter-Large** (100% data) | 0.8231 | 0.7167 | 0.8602 | **0.8326** | 0.7233 | Completed |
 | **AraBERTv0.2-Twitter-Base** (Run 2) | 0.7808 | 0.7694 | 0.8627 | **0.8243** | 0.7129 | Completed |
@@ -25,7 +26,10 @@ Zero-shot model performance evaluated on a stratified 100-row subset of the dev 
 
 | Model / API Provider | Covid Favg2 | Digital Favg2 | Women Favg2 | Overall Favg2 | Overall Favg3 | Accuracy | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Gemma 4 31B** (Cerebras, prompt v1) | 0.8857 | 0.8583 | 0.9654 | **0.9249** | 0.8235 | 88% | Completed (best Gemma config) |
+| **Gemma 4 31B** (Cerebras, prompt v1 + Arabic targets) | 0.8857 | 0.8583 | 1.0000 | **0.9365** | 0.8542 | 90% | Completed (best subset score) |
+| **Gemma 4 31B** (Cerebras, prompt v1) | 0.8857 | 0.8583 | 0.9654 | **0.9249** | 0.8235 | 88% | Completed |
+| **Gemma 4 31B** (Cerebras, prompt v4 few-shot) | 0.8444 | 0.8694 | 0.9872 | **0.9240** | 0.8229 | 89% | Completed |
+| **Gemma 4 31B** (Cerebras, prompt v5 + Arabic targets) | 0.8571 | 0.8468 | 0.9872 | **0.9178** | 0.8202 | 88% | Completed |
 | **Gemma 4 31B** (Cerebras, prompt v3) | 0.8730 | 0.6600 | 0.9583 | **0.9094** | 0.7729 | 86% | Completed |
 | **Qwen 3 32B** (Groq, prompt v3) | 0.7376 | 0.7917 | 0.9137 | **0.8550** | 0.7429 | 81% | Completed (best Qwen config) |
 | **Qwen 3 32B** (Groq, prompt v2) | 0.7529 | 0.7681 | 0.8904 | **0.8424** | 0.7225 | 79% | Completed |
@@ -60,6 +64,9 @@ StanceEval/
 │   ├── data_utils.py
 │   ├── evaluate.py
 │   ├── gemma_inference.py
+│   ├── gemma_inference_arabic_target.py
+│   ├── gemma_inference_full_v1_arabic_target.py
+│   ├── gemma_inference_train.py
 │   ├── metrics.py
 │   ├── qwen_inference.py
 │   └── verify_metrics.py
@@ -97,6 +104,9 @@ StanceEval/
 *   **[src/data_utils.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/data_utils.py)**: Canonicalizes raw target strings to match dev.csv, loads and validates train/dev CSVs, produces a stratified 90/10 internal split for early stopping, computes inverse-frequency class weights, and writes prediction outputs in both CSV (error analysis) and txt (official eval script) formats.
 *   **[src/evaluate.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/evaluate.py)**: Script to run the official competition evaluation script on saved prediction files and update results_summary.csv.
 *   **[src/gemma_inference.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/gemma_inference.py)**: Executes zero-shot stance detection using Gemma 4 31B via Cerebras API on a stratified 100-row subset of the dev set.
+*   **[src/gemma_inference_arabic_target.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/gemma_inference_arabic_target.py)**: Executes zero-shot stance detection using Gemma 4 31B via Cerebras API on a stratified 100-row subset of the dev set, with option for prompt V5 few-shot and translated Arabic target injection.
+*   **[src/gemma_inference_full_v1_arabic_target.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/gemma_inference_full_v1_arabic_target.py)**: Executes the full 619-row dev set validation using the V1 prompt and translated Arabic targets.
+*   **[src/gemma_inference_train.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/gemma_inference_train.py)**: Executes zero-shot stance detection on `train.csv` to mine error rows for prompt development (avoiding data leakage).
 *   **[src/metrics.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/metrics.py)**: Shared implementation of Favg2/Favg3 metrics replicating the competition math formulas to support training validation and LLM evaluation.
 *   **[src/qwen_inference.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/qwen_inference.py)**: Executes zero-shot stance detection using Qwen3-32B via Groq API on a stratified 100-row subset of the dev set, using rate-limit headers for pacing.
 *   **[src/verify_metrics.py](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/src/verify_metrics.py)**: Test suite that asserts local Favg2/Favg3 score implementations match the official competition evaluation outputs to 6 decimal places.

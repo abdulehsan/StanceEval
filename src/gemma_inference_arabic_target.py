@@ -27,7 +27,7 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 sys.path.insert(0, os.path.dirname(__file__))
-from data_utils import LABEL2ID, load_data
+from data_utils import LABEL2ID, load_data, write_pred_txt
 from metrics import favg2, per_topic_and_overall_metrics, run_official_eval
 from evaluate import scores_to_row, write_results_row
 
@@ -38,8 +38,8 @@ PRED_DIR = os.path.join(_ROOT, "predictions")
 LOG_DIR = os.path.join(_ROOT, "qwen_raw_logs")
 
 DEV_CSV_PATH = os.path.join(DATA_DIR, "dev.csv")
-RESULTS_PATH = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras_v1_prompt_arabic_target.csv")
-RAW_LOG_PATH = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_v1_prompt_arabic_target_raw.jsonl")
+RESULTS_PATH = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras_v5_prompt_arabic_target.csv")
+RAW_LOG_PATH = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_v5_prompt_arabic_target_raw.jsonl")
 
 # ── Model / API constants ─────────────────────────────────────────────────────
 MODEL_ID = "gemma-4-31b"
