@@ -107,7 +107,7 @@ Favor
 Against
 Favor
 Favor
-nan
+None
 Against
 Favor
 Against
@@ -145,7 +145,7 @@ Against
 Against
 Against
 Against
-nan
+None
 Against
 Against
 Favor
@@ -202,7 +202,7 @@ Against
 Favor
 Against
 Against
-nan
+None
 Against
 Favor
 Favor
@@ -219,7 +219,7 @@ Favor
 Favor
 Favor
 Against
-nan
+None
 Favor
 Favor
 Against
@@ -258,7 +258,7 @@ Against
 Against
 Favor
 Favor
-nan
+None
 Against
 Favor
 Against
