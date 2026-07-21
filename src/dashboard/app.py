@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(_ROOT, "src"))
 from data_utils import load_data
 from eda_tab import render_eda_tab
 from error_tab import render_error_tab
+from test_tab import render_test_tab
 
 st.set_page_config(
     page_title="StanceEval EDA & Error Analysis Dashboard",
@@ -32,6 +33,26 @@ def load_train_dev_data():
     train_df = load_data(train_path) if os.path.exists(train_path) else None
     dev_df = load_data(dev_path) if os.path.exists(dev_path) else None
     return train_df, dev_df
+
+def load_test_data():
+    gt_path = os.path.join(_ROOT, "data", "ground_truth.csv")
+    if os.path.exists(gt_path):
+        df = pd.read_csv(gt_path, keep_default_na=False)
+        df = df.rename(columns={"id": "ID", "tweet_text": "text"})
+        df.columns = df.columns.astype(str).str.strip()
+        return df
+    return None
+
+def load_test_predictions():
+    gemma_path = os.path.join(_ROOT, "predictions", "results_gemma4_31b_cerebras_test.csv")
+    anti_path = os.path.join(_ROOT, "predictions", "results_antigravity_test.csv")
+    qwen_path = os.path.join(_ROOT, "predictions", "results_qwen_test.csv")
+    
+    gemma_df = pd.read_csv(gemma_path, keep_default_na=False) if os.path.exists(gemma_path) else None
+    anti_df = pd.read_csv(anti_path, keep_default_na=False) if os.path.exists(anti_path) else None
+    qwen_df = pd.read_csv(qwen_path, keep_default_na=False) if os.path.exists(qwen_path) else None
+    
+    return gemma_df, anti_df, qwen_df
 
 def get_available_prediction_files():
     pred_dir = os.path.join(_ROOT, "predictions")
@@ -56,7 +77,12 @@ st.sidebar.image("https://img.icons8.com/clouds/100/combo-chart.png", width=80)
 st.sidebar.title("Navigation")
 tab_choice = st.sidebar.radio(
     "Go to page:",
-    options=["1. Dataset EDA (train.csv)", "2. Dataset EDA (dev.csv)", "3. Model Error Analysis"]
+    options=[
+        "1. Dataset EDA (train.csv)", 
+        "2. Dataset EDA (dev.csv)", 
+        "3. Model Error Analysis",
+        "4. Test Predictions (ground_truth.csv)"
+    ]
 )
 
 # Tab 1: Train EDA
@@ -115,3 +141,12 @@ elif tab_choice == "3. Model Error Analysis":
                     st.warning(f"The selected prediction file `{selected_file}` is empty.")
             except Exception as e:
                 st.error(f"Error loading predictions: {e}")
+
+# Tab 4: Test Predictions
+elif tab_choice == "4. Test Predictions (ground_truth.csv)":
+    gt_df = load_test_data()
+    gemma_df, anti_df, qwen_df = load_test_predictions()
+    if gt_df is not None:
+        render_test_tab(gt_df, gemma_df, anti_df, qwen_df)
+    else:
+        st.error("Could not load data/ground_truth.csv. Verify the path is correct.")
