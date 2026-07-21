@@ -1,4 +1,3 @@
-stance
 Favor
 Favor
 Favor
@@ -108,7 +107,7 @@ Favor
 Against
 Favor
 Favor
-None
+nan
 Against
 Favor
 Against
@@ -146,7 +145,7 @@ Against
 Against
 Against
 Against
-None
+nan
 Against
 Against
 Favor
@@ -203,7 +202,7 @@ Against
 Favor
 Against
 Against
-None
+nan
 Against
 Favor
 Favor
@@ -220,7 +219,7 @@ Favor
 Favor
 Favor
 Against
-None
+nan
 Favor
 Favor
 Against
@@ -259,7 +258,7 @@ Against
 Against
 Favor
 Favor
-None
+nan
 Against
 Favor
 Against
