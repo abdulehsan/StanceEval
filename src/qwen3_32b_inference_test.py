@@ -66,22 +66,27 @@ SYSTEM_PROMPT = (
     "Example 1 (Implicit Stance / Humor):\n"
     "Tweet: \"رسميًا صرت ملكة حجوزات تطعيم كورونا اتوقع باقي القطوه الي بالشارع م حجزت لها ههه\"\n"
     "Target: لقاح كورونا\n"
+    "Reasoning: The writer jokingly highlights booking many vaccine appointments for others, implying active positive engagement with the vaccine.\n"
     "Stance: Favor\n\n"
     "Example 2 (Target Resolution / Sentiment Diversion):\n"
     "Tweet: \"هناك من عاصر زمن تحرير السود من العبودية وهناك من عاصر زمن تمكين المرأة واعطائها كامل حقوقها وشاء الله أن يكون زماننا زمن اعطاء الشواذ حقوقهم وهو الأسوأ حتى الآن أتمنى ألا تطول صولتهم\"\n"
     "Target: تمكين المرأة\n"
+    "Reasoning: Negative language targets a different topic (LGBTQ+ rights), not women's empowerment itself, which the writer never opposes.\n"
     "Stance: None\n\n"
     "Example 3 (Factual Reporting / News):\n"
     "Tweet: \"السديس يؤكد تفعيل التحول الإلكتروني في جميع تعاملات الرئاسة\"\n"
     "Target: التحول الرقمي\n"
+    "Reasoning: The tweet only reports an official's statement on activating electronic services, with no personal opinion expressed.\n"
     "Stance: None\n\n"
     "Example 4 (Genuine Against):\n"
     "Tweet: \"لايخدعونك بكذبة تمكين المرأة!.\"\n"
     "Target: تمكين المرأة\n"
+    "Reasoning: The writer directly labels women's empowerment a lie/deception, explicitly rejecting the concept itself.\n"
     "Stance: Against\n\n"
     "Example 5 (Hijacked Hashtag Pattern):\n"
     "Tweet: \"#تمكين_المرأة بمفهوم الفارغون والفارغات والسطحيون والسطحيات والتافهون والتافهات هو اهلاك للمجتمع\"\n"
     "Target: تمكين المرأة\n"
+    "Reasoning: Despite using the pro-empowerment hashtag, the writer calls the concept destructive to society, showing clear opposition.\n"
     "Stance: Against\n\n"
     "### Output Format:\n"
     "You must return your output as a raw JSON object containing exactly one key:\n"
@@ -95,6 +100,23 @@ def build_user_message(text: str) -> str:
 def parse_json_response(raw: str) -> tuple[str, bool]:
     """Parse JSON response and extract stance."""
     raw = raw.strip()
+    
+    # Try to locate JSON block within the response
+    json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(0))
+            stance = str(data.get("stance", "None")).strip()
+            for label in VALID_LABELS:
+                if stance.lower() == label.lower():
+                    stance = label
+                    break
+            if stance in VALID_LABELS:
+                return stance, True
+        except Exception:
+            pass
+
+    # Standard markdown stripping as fallback
     if raw.startswith("```"):
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
@@ -143,46 +165,61 @@ def call_openrouter_once(
     client,
     row_index: int,
     text: str,
+    max_retries: int = 3,
 ) -> dict:
     user_msg = build_user_message(text)
+    attempt = 0
 
-    try:
-        print("    Calling OpenRouter API...")
-        completion = client.chat.completions.create(
-            model=OPENROUTER_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg},
-            ],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-            timeout=20.0,  # Prevent indefinite hangs
-            extra_headers={
-                "HTTP-Referer": "https://github.com/stanceeval",
-                "X-Title": "StanceEval"
+    while True:
+        try:
+            print("    Calling OpenRouter API...")
+            completion = client.chat.completions.create(
+                model=OPENROUTER_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user",   "content": user_msg},
+                ],
+                temperature=TEMPERATURE,
+                max_tokens=MAX_TOKENS,
+                timeout=45.0,  # Prevent indefinite hangs, but allow time for reasoning
+                extra_headers={
+                    "HTTP-Referer": "https://github.com/stanceeval",
+                    "X-Title": "StanceEval"
+                }
+            )
+
+            raw_text = completion.choices[0].message.content or ""
+            stance, parse_ok = parse_json_response(raw_text)
+
+            if not parse_ok:
+                attempt += 1
+                if attempt < max_retries:
+                    print(f"    ⚠️  Parse Error on row_index={row_index} (attempt {attempt}/{max_retries}) - retrying in 5s...")
+                    time.sleep(5.0)
+                    continue
+                else:
+                    print(f"\n❌ Parse Error on row_index={row_index}: Raw response: {repr(raw_text)}")
+                    print("Stopping script immediately as requested.")
+                    sys.exit(1)
+
+            return {
+                "row_index":     row_index,
+                "target":        "Women Driving",
+                "qwen_stance":   stance,
+                "parse_success": True,
+                "raw_response":  raw_text,
             }
-        )
 
-        raw_text = completion.choices[0].message.content or ""
-        stance, parse_ok = parse_json_response(raw_text)
-
-        if not parse_ok:
-            print(f"\n❌ Parse Error on row_index={row_index}: Raw response: {repr(raw_text)}")
-            print("Stopping script immediately as requested.")
-            sys.exit(1)
-
-        return {
-            "row_index":     row_index,
-            "target":        "Women Driving",
-            "qwen_stance":   stance,
-            "parse_success": True,
-            "raw_response":  raw_text,
-        }
-
-    except Exception as exc:
-        print(f"\n❌ API/Rate limit error on row_index={row_index}: {exc!r}")
-        print("Stopping script immediately as requested.")
-        sys.exit(1)
+        except Exception as exc:
+            attempt += 1
+            if attempt < max_retries:
+                print(f"    ⚠️  API/Rate limit error on row_index={row_index} (attempt {attempt}/{max_retries}): {exc!r} - retrying in 5s...")
+                time.sleep(5.0)
+                continue
+            else:
+                print(f"\n❌ API/Rate limit error on row_index={row_index}: {exc!r}")
+                print("Stopping script immediately as requested.")
+                sys.exit(1)
 
 def main() -> None:
     try:
@@ -252,6 +289,16 @@ def main() -> None:
         time.sleep(5.0)
 
     print(f"\n── Qwen 3 32B predictions complete: {new_calls} new calls, {skipped} skipped ──\n")
+
+    # Generate .txt file
+    txt_path = RESULTS_PATH.replace(".csv", ".txt")
+    print(f"Generating {txt_path} ...")
+    df = pd.read_csv(RESULTS_PATH, keep_default_na=False)
+    df["row_index"] = df["row_index"].astype(int)
+    df = df.sort_values("row_index")
+    from data_utils import write_pred_txt
+    write_pred_txt(df["qwen_stance"].tolist(), txt_path)
+    print(f"Successfully generated {txt_path} with {len(df)} lines.\n")
 
 if __name__ == "__main__":
     main()

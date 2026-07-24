@@ -41,7 +41,8 @@ These are the official evaluation scores returned by the CodaBench platform upon
 
 | Model / Submission | Overall Favg2 | Overall Favg3 | Overall Accuracy | Platform | Status |
 | :--- | :---: | :---: | :---: | :--- | :--- |
-| **Gemma 4 31B** (Cerebras, prompt v1) | **0.8063** | **0.6183** | **75.28%** | CodaBench | Submitted (Best Baseline) |
+| **Gemma 4 31B** (Cerebras, revised prompt) | **0.8444** | **0.6429** | **80.11%** | CodaBench | Submitted (Current Best, 3rd on Leaderboard) |
+| **Gemma 4 31B** (Cerebras, prompt v1) | **0.8063** | **0.6183** | **75.28%** | CodaBench | Submitted |
 
 ## Folder Structure
 

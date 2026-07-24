@@ -31,3 +31,6 @@ Evaluation Script/extracted_submission/
 error_analysis.md
 stanceeval2026_baseline_spec.md
 state.md
+
+# Zip submission archives
+*.zip

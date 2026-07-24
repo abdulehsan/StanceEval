@@ -22,7 +22,7 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 sys.path.insert(0, os.path.dirname(__file__))
-from data_utils import LABEL2ID
+from data_utils import LABEL2ID, write_pred_txt
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -411,6 +411,15 @@ def main() -> None:
         time.sleep(max(delay, 2.0))
 
     print(f"\n── Qwen predictions complete: {new_calls} new calls, {skipped} skipped ──\n")
+
+    # Generate .txt file
+    txt_path = RESULTS_PATH.replace(".csv", ".txt")
+    print(f"Generating {txt_path} ...")
+    df = pd.read_csv(RESULTS_PATH, keep_default_na=False)
+    df["row_index"] = df["row_index"].astype(int)
+    df = df.sort_values("row_index")
+    write_pred_txt(df["qwen_stance"].tolist(), txt_path)
+    print(f"Successfully generated {txt_path} with {len(df)} lines.\n")
 
 if __name__ == "__main__":
     main()

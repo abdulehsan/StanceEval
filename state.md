@@ -106,7 +106,8 @@ Primary evaluation metric: **Overall Favg2** (Macro-F1 score over Favor and Agai
 ### Zero-Shot LLM Subset runs (100-row stratified subset)
 | Model / API Provider | COVID-19 Favg2 | Digital Favg2 | Women Favg2 | Overall Favg2 | Overall Favg3 | Accuracy | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Gemma 4 31B** (Cerebras, prompt v1) | **0.8857** | **0.8583** | **0.9654** | **0.9249** | **0.8235** | **88%** | **Completed (best Gemma config)** |
+| **Gemma 4 31B** (Cerebras, revised prompt, T=0.1) | **0.8857** | **0.8583** | **1.0000** | **0.9365** | **0.8542** | **90%** | **Completed (best Gemma config)** |
+| **Gemma 4 31B** (Cerebras, prompt v1) | 0.8857 | 0.8583 | 0.9654 | **0.9249** | 0.8235 | 88% | **Completed** |
 | **Gemma 4 31B** (Cerebras, prompt v3) | 0.8730 | 0.6600 | 0.9583 | **0.9094** | 0.7729 | 86% | **Completed** |
 | **Qwen 3 32B** (Groq, prompt v3) | 0.7376 | 0.7917 | 0.9137 | **0.8550** | 0.7429 | **81%** | **Completed (best Qwen config)** |
 | **Qwen 3 32B** (Groq, prompt v2) | 0.7529 | 0.7681 | 0.8904 | **0.8424** | 0.7225 | 79% | **Completed** |

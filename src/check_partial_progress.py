@@ -26,7 +26,7 @@ def main():
     print("==========================================================================\n")
 
     _ROOT = os.path.join(os.path.dirname(__file__), "..")
-    results_path = os.path.join(_ROOT, "predictions", "results_gemma4_31b_cerebras_full_v1_arabic_target.csv")
+    results_path = os.path.join(_ROOT, "predictions", "results_gemma4_31b_cerebras_zeroshot_arabic_target_temp01.csv")
     dev_path = os.path.join(_ROOT, "data", "dev.csv")
 
     if not os.path.exists(results_path):
