@@ -1,11 +1,9 @@
 """
-gemma_inference_test_refined.py — Zero-shot stance detection on the blind test set (ground_truth.csv)
-using Gemma 4 31B via Cerebras with the refined prompt.
-
-Outputs raw predictions and supports resumability.
+gemma_inference_test_ci_v3.py — Zero-shot stance detection on the blind test set (ground_truth.csv)
+using Gemma 4 31B via Cerebras with the CI v3 prompt and temperature 0.1.
 
 Usage:
-    python src/gemma_inference_test_refined.py
+    python src/gemma_inference_test_ci_v3.py
 """
 
 from __future__ import annotations
@@ -35,12 +33,12 @@ PRED_DIR = os.path.join(_ROOT, "predictions")
 LOG_DIR = os.path.join(_ROOT, "qwen_raw_logs")
 
 TEST_CSV_PATH = os.path.join(DATA_DIR, "ground_truth.csv")
-RESULTS_PATH = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras_test_refined.csv")
-RAW_LOG_PATH = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_test_refined_raw.jsonl")
+RESULTS_PATH = os.path.join(PRED_DIR, "results_gemma4_31b_cerebras_test_ci_v3.csv")
+RAW_LOG_PATH = os.path.join(LOG_DIR, "results_gemma4_31b_cerebras_test_ci_v3_raw.jsonl")
 
 # ── Model / API constants ─────────────────────────────────────────────────────
 MODEL_ID = "gemma-4-31b"
-TEMPERATURE = 1.0
+TEMPERATURE = 0.1  # Set to 0.1 for optimal single-word deterministic mapping
 TOP_P = 0.95
 MAX_TOKENS = 10  # single-word label only
 
@@ -61,79 +59,133 @@ RESULTS_FIELDNAMES = [
     "raw_response",
 ]
 
-# ── System Prompt (Refined) ───────────────────────────────────────────────────
-SYSTEM_PROMPT = (
-    "You are an expert annotator for Arabic stance detection. Given an Arabic tweet and a target topic, classify the writer's stance toward that target as exactly one of three labels:\n\n"
-    "- Favor: the writer expresses support for or a positive position toward the target.\n"
-    "- Against: the writer expresses opposition to or a negative position toward the target.\n"
-    "- None: no clear stance — neutral, off-topic, or ambiguous.\n\n"
-    "### Stance Disambiguation Guidelines:\n\n"
-    "1. **Identify the Opinion Target First**:\n"
-    "   Before judging sentiment, determine WHO or WHAT the tweet's negative or positive language is actually directed at. Negative sentiment alone does not imply \"Against\" — first identify who or what is being criticized.\n\n"
-    "2. **Defending the Target by Attacking Opponents (Negativity Diversion)**:\n"
-    "   If the writer uses negative terms (e.g., \"backwardness\" / التخلف, \"reactionary\" / الرجعية, \"extremism\" / التطرف, \"fossilization\" / التحجر, \"pseudo-men\" / أشباه رجال) to attack the *opponents* of the target, the writer's stance is actually **Favor** (supporting the target by defending it against its detractors).\n\n"
-    "3. **Target Resolution (Diversion)**:\n"
-    "   Verify where the negativity is directed. If the writer expresses anger toward a completely different topic (e.g., other social issues, a foreign system, or unrelated regulations) but mentions the target itself without opposition, the stance toward the target is **None** or **Favor**, not Against.\n\n"
-    "4. **Factual Reporting vs. Opinion**:\n"
-    "   If a tweet merely reports a news event, announcement, or statistic about the target without any implicit or explicit opinion/emotion, classify it as **None**.\n\n"
-    "5. **Questions and Speculation Without Opinion**:\n"
-    "   Questions, speculation, or observations that do not express a clear personal opinion should be classified as **None**. Example: \"كم حادث صار؟\" → None.\n\n"
-    "6. **Sarcasm and Hijacked Hashtags**:\n"
-    "   Arabic social media often uses sarcasm. If a tweet uses a pro-target hashtag but sarcastically mocks it or describes it as destructive, the stance is **Against**.\n\n"
-    "### Few-Shot Examples (from train.csv):\n\n"
-    "Example 1 (Explicit Favor):\n"
-    "Target: تمكين المرأة\n"
-    "Tweet: نحن في بداية العصر الذهبي وهو تمكين المرأه من حقوقها وتخليص المجتمع من افكار التحجر والتخلف بأعمال العقل بكل مناحي الحياة كما امر الله بالقران الكريم (تعقلوا،تفكروا،تدبروا ،الخ)\n"
-    "Stance: Favor\n\n"
-    "Example 2 (Implicit Favor - Attacking Opponents):\n"
-    "Target: تمكين المرأة\n"
-    "Tweet: ردك يبين تاثرك بالخطاب الصحوى الرجعي المتخلف ولا يعكس تعليمك في ارقى الجامعات ، و حكومه المملكة من اهم اهدف رؤيتها تمكين المرأة وولى العهد ذكر في اكثر في لقاء ان المرأة السعودية ظلمت في فترة الغفوة والظلام والتطرف ووعد بتمكينها\n"
-    "Stance: Favor\n\n"
-    "Example 3 (Explicit Against):\n"
-    "Target: تمكين المرأة\n"
-    "Tweet: لايخدعونك بكذبة تمكين المرأة!.\n"
-    "Stance: Against\n\n"
-    "Example 4 (None - Target Resolution / Sentiment Diversion):\n"
-    "Target: تمكين المرأة\n"
-    "Tweet: هناك من عاصر زمن تحرير السود من العبودية وهناك من عاصر زمن تمكين المرأة واعطائها كامل حقوقها وشاء الله أن يكون زماننا زمن اعطاء الشواذ حقوقهم وهو الأسوأ حتى الآن أتمنى ألا تطول صولتهم\n"
-    "Stance: None\n\n"
-    "Example 5 (Against - Hijacked Hashtag / Sarcasm):\n"
-    "Target: تمكين المرأة\n"
-    "Tweet: #تمكين_المرأة بمفهوم الفارغون والفارغات والسطحيون والسطحيات والتافهون والتافهات هو اهلاك للمجتمع\n"
-    "Stance: Against\n\n"
-    "### Response Format:\n"
-    "Return exactly one token:\n\n"
-    "Favor\n"
-    "Against\n"
-    "None\n\n"
-    "Do not explain.\n"
-    "Do not repeat the tweet.\n"
-    "Do not output anything else."
-)
+# ── System Prompt (CI v3) ─────────────────────────────────────────────────────
+SYSTEM_PROMPT = """You are an expert annotator for Arabic stance detection.
+
+### Background Context
+The target concerns the 2017–2018 Saudi policy change allowing women to drive. Before June 2018, women were prohibited from driving in Saudi Arabia. Tweets from this period often discuss the royal decree, implementation, licensing, religion, tradition, safety, gender roles, media coverage, and public reaction. They frequently use Saudi dialect, sarcasm, humor, rhetorical questions, and indirect expressions.
+
+### Task
+Given an Arabic tweet and a target topic, classify the writer's stance toward the target as exactly one of:
+
+• Favor
+• Against
+• None
+
+Before assigning a stance, mentally rewrite the tweet into its intended literal meaning while preserving the writer's opinion, sarcasm, dialect, rhetorical intent, and emojis.
+
+Then determine the stance toward the target itself, not toward other people, quoted opinions, related entities, or hashtags.
+
+Guidelines:
+
+• Favor: supports, defends, promotes, or welcomes the target.
+• Against: opposes, criticizes, rejects, or mocks the target.
+• None: no clear stance toward the target.
+
+Important:
+
+• Determine where praise or criticism is directed. Negative language toward opponents of the target is usually Favor, not Against.
+• Hashtags may be ironic or hijacked. Never infer stance from hashtags alone.
+• Rhetorical questions, sarcasm, and emojis often convey the writer's true stance. Interpret the intended meaning rather than the literal wording.
+• Distinguish reporting from endorsement. Mentioning an event or policy does not by itself express a stance, unless it is framed positively (e.g. promoting, celebrating, or inviting participation), in which case it leans Favor.
+• If the stance toward the target cannot reasonably be inferred, output None.
+
+Respond with ONLY one word:
+
+Favor
+Against
+None
+
+Do not provide any explanation, punctuation, or additional text."""
 
 def build_user_message(target: str, text: str) -> str:
     arabic_target = TARGET_AR.get(target, target)
     return f"Target: {arabic_target}\nTweet: {text}"
 
 def parse_response(raw: str) -> tuple[str, bool]:
-    """Parse a model response and return (stance_label, parse_success).
-    parse_success is True if and only if the output is a clean single token.
-    """
-    raw_clean = raw.strip()
+    """Parse a model response and return (stance_label, parse_success)."""
+    raw = raw.strip()
 
-    # Clean single token (allowing case-insensitive match of exact labels)
-    for label in ["Favor", "Against", "None"]:
-        if raw_clean.lower() == label.lower():
+    # Attempt 1: exact word match
+    if raw in VALID_LABELS:
+        return raw, True
+
+    # Attempt 2: case-insensitive exact match
+    for label in VALID_LABELS:
+        if raw.lower() == label.lower():
             return label, True
 
-    # Fallback to salvage the label using substring lookup
+    # Attempt 3: bare label substring anywhere
     for label in ["Favor", "Against", "None"]:
-        if label.lower() in raw_clean.lower():
+        if label.lower() in raw.lower():
             return label, False
+
+    # Attempt 4: JSON fallback
+    try:
+        obj = json.loads(raw)
+        stance = str(obj.get("stance", "")).strip()
+        if stance in VALID_LABELS:
+            return stance, False
+    except (json.JSONDecodeError, AttributeError):
+        pass
+    match = re.search(r'"stance"\s*:\s*"(Favor|Against|None)"', raw)
+    if match:
+        return match.group(1), False
 
     return "None", False
 
-# ── Dynamic Rate-Limit Pacing Logic (Cerebras 5 RPM & 150 RPH) ────────────────
+# ── Rate-limit pacing logic (Cerebras 5 RPM ceiling) ──────────────────────────
+def compute_pace_delay(headers: dict) -> float:
+    base_delay = 12.0
+    try:
+        remaining_req_min = int(headers.get("x-ratelimit-remaining-requests-minute", 5))
+    except (ValueError, TypeError):
+        remaining_req_min = 5
+
+    try:
+        remaining_tok_min = int(headers.get("x-ratelimit-remaining-tokens-minute", 30_000))
+    except (ValueError, TypeError):
+        remaining_tok_min = 30_000
+
+    print(
+        f"    Cerebras RL — remaining requests (min): {remaining_req_min}  |  "
+        f"remaining tokens (min): {remaining_tok_min}"
+    )
+
+    if remaining_req_min <= 1:
+        print(f"    ⚠️  Cerebras requests budget almost exhausted ({remaining_req_min} left) → sleeping 60s to replenish")
+        return 60.0
+
+    if remaining_tok_min < 1000:
+        print(f"    ⚠️  Cerebras token budget low ({remaining_tok_min} left) → sleeping 30s to replenish")
+        return 30.0
+
+    return base_delay
+
+def _parse_reset_duration(s: str) -> float:
+    if not s:
+        return 0.0
+    s = s.strip()
+    if s.endswith("s") and not s.endswith("ms"):
+        try:
+            return float(s[:-1])
+        except ValueError:
+            pass
+    if s.endswith("ms"):
+        try:
+            return float(s[:-2]) / 1000.0
+        except ValueError:
+            pass
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    
+    m = re.fullmatch(r"(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?", s)
+    if m and (m.group(1) or m.group(2)):
+        return float(m.group(1) or 0) * 60 + float(m.group(2) or 0)
+    return 0.0
+
 def load_request_timestamps(raw_log_path: str) -> list[float]:
     timestamps = []
     if not os.path.exists(raw_log_path):
@@ -152,42 +204,6 @@ def load_request_timestamps(raw_log_path: str) -> list[float]:
             except Exception:
                 pass
     return sorted(timestamps)
-
-def pace_request(timestamps: list[float], headers: dict):
-    now = time.time()
-    
-    # Filter timestamps to last 3600 seconds
-    timestamps[:] = [ts for ts in timestamps if now - ts < 3600.0]
-    
-    # 1. Minute Limit (5 RPM)
-    ts_min = [ts for ts in timestamps if now - ts < 60.0]
-    
-    delay = 0.0
-    
-    remaining_req_min = int(headers.get("x-ratelimit-remaining-requests-minute", 5)) if headers else 5
-    if remaining_req_min <= 0 or len(ts_min) >= 5:
-        if ts_min:
-            delay = max(delay, 60.0 - (now - ts_min[0]))
-            
-    # 2. Hourly Limit (150 RPH)
-    remaining_req_hour = int(headers.get("x-ratelimit-remaining-requests-hour", 150)) if headers else 150
-    if remaining_req_hour <= 0 or len(timestamps) >= 150:
-        if timestamps:
-            delay = max(delay, 3600.0 - (now - timestamps[0]))
-            
-    # 3. Minimum spacing between requests to stay under 5 RPM (12 seconds)
-    if ts_min:
-        spacing_delay = 12.0 - (now - ts_min[-1])
-        delay = max(delay, spacing_delay)
-        
-    if delay > 0:
-        resume_time = time.strftime("%H:%M:%S", time.localtime(time.time() + delay))
-        print(
-            f"    ⏳ Pacing delay: sleeping {delay:.2f}s (Minute remaining: {remaining_req_min}, "
-            f"Hour remaining: {remaining_req_hour}, Minute count: {len(ts_min)}, Hour count: {len(timestamps)}). "
-            f"Resume at {resume_time}"
-        )
-        time.sleep(delay)
 
 def load_completed_indices(results_path: str) -> set[int]:
     if not os.path.exists(results_path):
@@ -217,10 +233,8 @@ def call_cerebras_once(
     max_retries: int = 4,
 ) -> tuple[dict, dict]:
     user_msg = build_user_message(target, text)
-    last_rl_headers = {}
-    attempt = 0
 
-    while attempt < max_retries:
+    for attempt in range(max_retries):
         try:
             raw_resp = client.chat.completions.with_raw_response.create(
                 model=MODEL_ID,
@@ -235,10 +249,10 @@ def call_cerebras_once(
             )
 
             rl_headers = dict(raw_resp.headers)
-            last_rl_headers = rl_headers
             completion = raw_resp.parse()
 
             raw_text = completion.choices[0].message.content or ""
+            model_returned = completion.model
             predicted, parse_ok = parse_response(raw_text)
 
             result = {
@@ -246,7 +260,7 @@ def call_cerebras_once(
                 "target":          target,
                 "gold_label":      "",
                 "predicted_label": predicted,
-                "model_id":        "gemma-4-31b-refined-v2",  # Hardcoded model_id for refined run
+                "model_id":        model_returned,
                 "parse_success":   parse_ok,
                 "raw_response":    raw_text,
             }
@@ -254,27 +268,25 @@ def call_cerebras_once(
 
         except Exception as exc:
             exc_str = str(exc)
-            if hasattr(exc, "response") and exc.response is not None:
-                last_rl_headers = dict(exc.response.headers)
-                
             if "429" in exc_str or "rate_limit" in exc_str.lower() or "too_many_requests" in exc_str.lower():
                 retry_after = 60.0
-                if last_rl_headers and "retry-after" in last_rl_headers:
-                    try:
-                        retry_after = float(last_rl_headers["retry-after"])
-                    except ValueError:
-                        pass
+                if hasattr(exc, "response") and exc.response is not None:
+                    headers = dict(exc.response.headers)
+                    if "retry-after" in headers:
+                        try:
+                            retry_after = float(headers["retry-after"])
+                        except ValueError:
+                            pass
                 print(
-                    f"    ⚠️  429 / Rate Limit on row {row_index} — "
-                    f"sleeping {retry_after:.1f}s (does not count as failed retry attempt)"
+                    f"    ⚠️  429 / Rate Limit on row {row_index} (attempt {attempt + 1}/{max_retries}) — "
+                    f"sleeping {retry_after:.1f}s"
                 )
                 time.sleep(retry_after)
                 continue
 
-            attempt += 1
             wait = 5.0 * (2 ** attempt)
-            print(f"    ❌ Row {row_index} attempt {attempt}/{max_retries}: {exc!r} — retrying in {wait}s")
-            if attempt < max_retries:
+            print(f"    ❌ Row {row_index} attempt {attempt + 1}/{max_retries}: {exc!r} — retrying in {wait}s")
+            if attempt < max_retries - 1:
                 time.sleep(wait)
 
     print(f"    ❌ Row {row_index}: all {max_retries} attempts failed; recording as 'None'.")
@@ -283,21 +295,19 @@ def call_cerebras_once(
         "target":          target,
         "gold_label":      "",
         "predicted_label": "None",
-        "model_id":        "gemma-4-31b-refined-v2",
+        "model_id":        MODEL_ID,
         "parse_success":   False,
         "raw_response":    "ERROR: max retries exceeded",
     }
-    return result, last_rl_headers
+    return result, {}
 
 def load_test_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, keep_default_na=False)
-    # Rename columns to match standard format
     df = df.rename(columns={"id": "ID", "tweet_text": "text"})
     df.columns = df.columns.astype(str).str.strip()
     return df
 
 def main() -> None:
-    # Load env variables
     try:
         from dotenv import load_dotenv
         load_dotenv(os.path.join(_ROOT, ".env"))
@@ -338,8 +348,8 @@ def main() -> None:
         print(f"📊 Loaded {len(request_timestamps)} request timestamps from last 60 minutes.")
 
     print(f"── Inference config ──")
-    print(f"   Model ID (stored): gemma-4-31b-refined-v2")
-    print(f"   Prompt:           Refined Stance Detection Prompt")
+    print(f"   Model:            {MODEL_ID}")
+    print(f"   Prompt:           CI v3 Prompt")
     print(f"   Targets:          Translated to Arabic ({TARGET_AR['Women Driving']})")
     print(f"   temperature={TEMPERATURE}  top_p={TOP_P}")
     print(f"   Results CSV:      {results_path}")
@@ -360,15 +370,37 @@ def main() -> None:
         target = str(row["target"])
         text   = str(row["text"])
 
-        # Dynamically pace request based on past timestamps and response headers
-        pace_request(request_timestamps, rl_headers)
+        now = time.time()
+        request_timestamps = [ts for ts in request_timestamps if now - ts < 3600]
+
+        if len(request_timestamps) >= 150:
+            oldest_ts = request_timestamps[0]
+            sleep_time = oldest_ts + 3600 - now + 1.0
+            
+            if rl_headers:
+                reset_req_hour_str = rl_headers.get("x-ratelimit-reset-requests-hour") or rl_headers.get("x-ratelimit-reset-requests-day")
+                if reset_req_hour_str:
+                    try:
+                        header_sleep = _parse_reset_duration(str(reset_req_hour_str))
+                        if header_sleep > sleep_time:
+                            sleep_time = header_sleep + 1.0
+                    except Exception:
+                        pass
+
+            resume_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() + sleep_time))
+            print(f"\n⏳ HOURLY RATE LIMIT REACHED (150 requests in last 60 minutes).")
+            print(f"   Entering cooldown: sleeping for {sleep_time:.1f} seconds (~{sleep_time/60:.1f} minutes).")
+            print(f"   Script will resume at: {resume_time}\n")
+            time.sleep(sleep_time)
+
+            now = time.time()
+            request_timestamps = [ts for ts in request_timestamps if now - ts < 3600]
 
         print(f"  [{position}/{total}] row_index={row_index} | target={target!r} ({TARGET_AR.get(target)})")
 
-        result, new_rl_headers = call_cerebras_once(client, row_index, target, text)
-        if new_rl_headers:
-            rl_headers = new_rl_headers
+        result, rl_headers = call_cerebras_once(client, row_index, target, text)
         request_timestamps.append(time.time())
+        result["gold_label"] = ""  # No gold label for test set
 
         append_result_row(results_path, result)
         completed.add(row_index)
@@ -387,7 +419,11 @@ def main() -> None:
         with open(raw_log_path, "a", encoding="utf-8") as lf:
             lf.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
-        print(f"    → pred={result['predicted_label']!r} (clean_token={result['parse_success']})")
+        print(f"    → pred={result['predicted_label']!r}")
+
+        delay = compute_pace_delay(rl_headers)
+        if delay > 0:
+            time.sleep(delay)
 
     print(f"\n── Inference complete: {new_calls} new calls, {skipped} skipped ──\n")
 
@@ -396,19 +432,18 @@ def main() -> None:
     results_df = results_df[results_df["row_index"].isin(selected_indices)].copy()
 
     if results_df.empty:
-        print("⚠️ No results found.")
+        print("⚠️ No results found to evaluate.")
         return
 
-    # Sort results by row_index to guarantee correct line-by-line alignment
+    # Sort by row_index to guarantee correct line-by-line alignment
     results_df = results_df.sort_values("row_index").copy()
-    
-    # Save the sorted CSV file
     results_df.to_csv(results_path, index=False)
 
     y_pred = results_df["predicted_label"].tolist()
+    
     txt_path = results_path.replace(".csv", ".txt")
     write_pred_txt(y_pred, txt_path)
-    print(f"Saved sorted test predictions to {txt_path}")
+    print(f"Saved test predictions to {txt_path}")
     print("\nPredicted stance distribution:")
     print(results_df["predicted_label"].value_counts().to_string())
 

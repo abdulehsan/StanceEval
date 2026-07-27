@@ -1,6 +1,6 @@
 row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 0,Women Driving,,Against,gemma-4-31b,True,Against
-1,Women Driving,,Favor,gemma-4-31b,True,Favor
+1,Women Driving,,Against,gemma-4-31b,True,Against
 2,Women Driving,,None,gemma-4-31b,True,None
 3,Women Driving,,Against,gemma-4-31b,True,Against
 4,Women Driving,,Against,gemma-4-31b,True,Against
@@ -18,7 +18,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 16,Women Driving,,Against,gemma-4-31b,True,Against
 17,Women Driving,,Favor,gemma-4-31b,True,Favor
 18,Women Driving,,None,gemma-4-31b,True,None
-19,Women Driving,,None,gemma-4-31b,True,None
+19,Women Driving,,Favor,gemma-4-31b,True,Favor
 20,Women Driving,,Against,gemma-4-31b,True,Against
 21,Women Driving,,Favor,gemma-4-31b,True,Favor
 22,Women Driving,,Against,gemma-4-31b,True,Against
@@ -44,7 +44,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 42,Women Driving,,Favor,gemma-4-31b,True,Favor
 43,Women Driving,,Favor,gemma-4-31b,True,Favor
 44,Women Driving,,Against,gemma-4-31b,True,Against
-45,Women Driving,,Against,gemma-4-31b,True,Against
+45,Women Driving,,Favor,gemma-4-31b,True,Favor
 46,Women Driving,,Against,gemma-4-31b,True,Against
 47,Women Driving,,Favor,gemma-4-31b,True,Favor
 48,Women Driving,,Against,gemma-4-31b,True,Against
@@ -58,11 +58,11 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 56,Women Driving,,Favor,gemma-4-31b,True,Favor
 57,Women Driving,,Against,gemma-4-31b,True,Against
 58,Women Driving,,Against,gemma-4-31b,True,Against
-59,Women Driving,,None,gemma-4-31b,True,None
+59,Women Driving,,Favor,gemma-4-31b,True,Favor
 60,Women Driving,,Against,gemma-4-31b,True,Against
 61,Women Driving,,Against,gemma-4-31b,True,Against
 62,Women Driving,,Against,gemma-4-31b,True,Against
-63,Women Driving,,None,gemma-4-31b,True,None
+63,Women Driving,,Against,gemma-4-31b,True,Against
 64,Women Driving,,Against,gemma-4-31b,True,Against
 65,Women Driving,,Against,gemma-4-31b,True,Against
 66,Women Driving,,Favor,gemma-4-31b,True,Favor
@@ -93,7 +93,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 91,Women Driving,,Against,gemma-4-31b,True,Against
 92,Women Driving,,Favor,gemma-4-31b,True,Favor
 93,Women Driving,,Against,gemma-4-31b,True,Against
-94,Women Driving,,None,gemma-4-31b,True,None
+94,Women Driving,,Against,gemma-4-31b,True,Against
 95,Women Driving,,Against,gemma-4-31b,True,Against
 96,Women Driving,,Against,gemma-4-31b,True,Against
 97,Women Driving,,Favor,gemma-4-31b,True,Favor
@@ -309,7 +309,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 307,Women Driving,,Against,gemma-4-31b,True,Against
 308,Women Driving,,Against,gemma-4-31b,True,Against
 309,Women Driving,,None,gemma-4-31b,True,None
-310,Women Driving,,Favor,gemma-4-31b,True,Favor
+310,Women Driving,,None,gemma-4-31b,True,None
 311,Women Driving,,None,gemma-4-31b,True,None
 312,Women Driving,,Against,gemma-4-31b,True,Against
 313,Women Driving,,Favor,gemma-4-31b,True,Favor
@@ -338,7 +338,7 @@ row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
 336,Women Driving,,Favor,gemma-4-31b,True,Favor
 337,Women Driving,,Against,gemma-4-31b,True,Against
 338,Women Driving,,Favor,gemma-4-31b,True,Favor
-339,Women Driving,,None,gemma-4-31b,True,None
+339,Women Driving,,Favor,gemma-4-31b,True,Favor
 340,Women Driving,,Against,gemma-4-31b,True,Against
 341,Women Driving,,None,gemma-4-31b,True,None
 342,Women Driving,,Favor,gemma-4-31b,True,Favor
