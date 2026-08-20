@@ -1,0 +1,260 @@
+row_index,target,predicted_label,parse_success,raw_response
+0,Women Driving,Against,True," Step 1: Analyze the tweet content for clear support or opposition to the target.
+The tweet mentions ""لازم ندزلكم من عندنا كويتيه منقبه سيارتها كورلا وتكون عينه تجريبيه واذا اقتنعتوا راح اشيل شاربي بقزازه"" which translates to ""We will send you a Kuwaiti woman wearing a niqab with a Corolla and a test drive. If you like it, I will remove my beard through the windshield.""
+
+Step 2: Consider the tone and language used in the tweet.
+The use of ""نرسللكم"" (we will send you) and ""اشيل شاربي بقزازه"" (I will remove my beard through the windshield) suggests a sarcastic and mocking tone towards the target of allowing women to drive.
+
+Step 3: Determine the writer's stance based on the analysis.
+The tweet seems to be mocking the idea of women driving in Saudi Arabia and suggests that it might be a farcical situation.
+
+Final Stance: Against "
+1,Women Driving,Favor,True," To determine the writer's stance, we need to analyze the content and tone of the tweet.
+
+The tweet uses a playful and exaggerated tone, such as ""بصصصصصصيح ابغا أسوِّق"" (I really want to drive) and ""خخخخخخخخخخييييييععععععر"" (So funny). These expressions show enthusiasm and a sense of excitement about the topic.
+
+The hashtag ""#المراه_السعوديه_تسوق"" (Women in Saudi Arabia shopping) is used, which indicates support or celebration of the change.
+
+Based on the tone and content, the writer seems to be expressing a positive and supportive stance towards the target (Women Driving).
+
+Final Stance: Favor "
+2,Women Driving,Favor,True," To determine the writer's stance, let's analyze the content step by step:
+
+1. The tweet includes a hashtag (#المراه_السعوديه_تسوق) that translates to ""The Saudi woman is driving."" This indicates the writer is discussing the policy change of allowing women to drive in Saudi Arabia.
+
+2. The phrase ""الناس تتلفت بكل اشاره 😂"" translates to ""People are looking around every signal 😂."" This phrase can be interpreted as a sarcastic comment implying that people are intrigued by the sight of a Saudi woman driving.
+
+3. The use of the laughing emoji (😂) suggests that the writer finds the situation amusing or noteworthy in a humorous way.
+
+Given this context, the writer's stance can be interpreted as:
+
+Final Stance: Favor
+
+The tweet demonstrates a positive attitude towards the policy change, even though it is presented in a humorous and sarcastic manner. "
+3,Women Driving,UNPARSED,False," To determine the writer's stance, let's analyze the content and context of the tweet:
+
+1. The tweet is written in Arabic and includes a humorous tone, which often indicates sarcasm or a lighthearted approach to the topic.
+2. The phrase ""ما محظوظ الا عادل الجبير!"" translates to ""what a lucky Adel Al-Jubeir!"" in English. This implies that the writer is sarcastically highlighting the fact that Adel Al-Jubeir is not the one benefiting from the new policy, but rather it is the general public, especially the target audience of women in Saudi Arabia.
+3. The hashtag ""#المراه_السعوديه_تسوق"" translates to ""#SaudiWomenDriving,"" which is a positive and supportive hashtag related to the target topic of women driving in Saudi Arabia.
+
+Based on the analysis, the writer is using sarcasm to emphasize that it is not Adel Al-Jubeir who is benefiting from the new policy, but rather the general public. The hashtag ""#المراه_السعوديه_تسوق"" further supports the idea that the writer is in favor of the women driving policy in"
+4,Women Driving,UNPARSED,False," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet starts with ""#لن_تقودي"" which means ""#Won't_drive"" in English. The writer is clearly expressing their disagreement with the idea of women driving.
+2. The writer continues by stating ""لن تقود أمي لن تقود أختي لن تقود قريبتي"" which means ""My mother won't drive, my sister won't drive, my cousin won't drive"" in English. This shows that the writer believes that their own family members, and possibly all women, should not drive.
+3. The writer states ""أنا سأخدمهم بنفسي وبكل ما يطلبون"" which means ""I will serve them myself and do everything they ask"" in English. This implies that the writer is willing to take on the responsibility of taking care of their family members themselves, rather than allowing them to drive.
+4. Lastly, the writer concludes with ""ولن أتزوج فتاة تقود السيارة أو تشترط ذلك"" which means ""I won't marry a girl who drives a car or insists on it"" in English. The writer is stating that they will not marry a woman who drives, showing their opposition to women driving"
+5,Women Driving,Against,True," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet includes the hashtag #لن_تقودي (#WomenDriving), which is related to the target topic.
+2. The writer asks ""ليش (Why)"" followed by a statement about not understanding who should be driving, suggesting confusion or disagreement.
+3. The writer uses the phrase ""مو سيارة لازم تقود (not a car, it should be driven)"" to argue their point, which implies that they think there might be a better use for driving or that driving itself is unnecessary.
+4. The writer cites ""بلاد اكبر مثال (the country's greatest example)"" followed by ""#زنوبيا (Zenobia),"" a historical figure who was a queen in ancient times. This could be a rhetorical device to highlight the idea that there are more important matters in a country than allowing women to drive.
+
+Based on the analysis, the writer appears to be against the target topic of women driving. The writer questions the necessity of driving and suggests that there might be more important matters to focus on in the country.
+
+Final Stance: Against "
+6,Women Driving,UNPARSED,False," To determine the writer's stance on the topic of women driving in Saudi Arabia, let's analyze the tweet step by step:
+
+1. The hashtag ""#لن_تقودي"" translates to ""I will not drive"" in English. This indicates that the writer is against the idea of women driving in Saudi Arabia.
+2. The phrase ""ان شاء الله نقود حالنا حال شعوب العالم"" translates to ""If Allah wills, we will drive like other countries' people."" This suggests that the writer believes that women in Saudi Arabia should be able to drive, but they prefer to wait for a time when the conditions are suitable, implying a cautious stance rather than a strong support or opposition.
+3. The writer mentions ""أكيد راح يكون فيه شروط مو عبث وانتو تعودتو الشارع لكم ليه لازم نشارككم ☺️☺️🌹."" This translates to ""Definitely, there will be conditions that are not messed up, and you are accustomed to having the streets all to yourselves. Why do we have to share with you?"" The writer is making a sarcastic comment about the current situation of women not having the right to drive, suggesting that it is an"
+7,Women Driving,Against,True," Step 1: Analyze the tweet content
+The tweet reads ""#لن_تقودي نقود او لا وشدخلكم ياخي قاعدين على قلوبكم؟🙃"" which roughly translates to ""#Won't_drive? Why is it your concern? You're just sitting on your asses?""
+
+Step 2: Identify key phrases and their meanings
+- ""#لن_تقودي"": ""Won't_drive"" - The user is referring to women not driving.
+- ""نقود او لا"": ""Why is it your concern?"" - The user is questioning the importance of the other person's concern.
+- ""شدخلكم"": ""Your concern""
+- ""قاعدين على قلوبكم"": ""You're just sitting on your asses"" - The user is implying that the other person is being overly concerned about something unimportant.
+
+Step 3: Determine the writer's stance
+The tweet seems to be expressing frustration or sarcasm towards the people who are concerned about women not driving. The tone of the tweet is dismissive and disdainful towards those who are worried about this issue.
+
+Final Stance: Against "
+8,Women Driving,UNPARSED,False," Step 1: Analyze the tweet content
+The tweet mentions ""وسقتي وبعدين يعني ؟"" which translates to ""So you are driving now? And what about driving at night??"" This indicates a concern about the timing of driving and a possible implication that the writer might not approve of it.
+
+Step 2: Identify the stance towards the target
+The tweet uses phrases like ""الله يستر على المسلمات العفيفات"" which translates to ""May Allah protect the modest Muslim women."" This suggests that the writer is concerned about the behavior of women who choose to drive, possibly fearing that it could lead to immoral behavior.
+
+Step 3: Consider the use of sarcasm, dialect, and rhetorical intent
+The tweet might be using sarcasm to emphasize the writer's concern about the behavior of women who drive at night. The use of dialect and rhetorical intent is evident in the phrase ""الله يستر على المسلمات العفيفات,"" which could be interpreted as a call for modesty and propriety.
+
+Step 4: Determine the writer's stance
+Given the concerns raised by the writer about the behavior of women who drive at night and the call for modesty,"
+9,Women Driving,Favor,True," To analyze the given tweet, let's break it down step by step and consider the language, tone, and content.
+
+1. ""#المراه_السعوديه_تسوق"" (#woman_saudi_driving): This hashtag indicates the subject of the tweet is related to women driving in Saudi Arabia.
+
+2. ""قيادة المرأة للسيارة تمكنها من إغاثة نفسها وقضاء أمورها العاجلة دون انتظار وصول الآخرين لها، أو الاضطرار للركوب مع سائق غريب عنها"" (The woman's driving allows her to take care of herself and fulfill urgent matters without waiting for others to arrive or having to ride with a stranger): This statement is a clear endorsement of women driving, highlighting the benefits such as independence and convenience.
+
+3. ""يتبع"" (continued): This word signals that the tweet continues with more points in favor of women driving.
+
+Based on this analysis, the writer is promoting the benefits of women driving and supporting this policy change. The tone is positive and encouraging.
+
+Final Stance: Favor "
+10,Women Driving,Against,True," Step 1: Identify the target topic in the tweet
+The target topic is ""Women Driving"" in the Saudi context, which refers to the 2017–2018 Saudi policy change allowing women to drive.
+
+Step 2: Analyze the tweet content
+The tweet argues that it is not essential for women to drive, and instead, there are more important issues such as those related to women who are victims of violence, divorced, widowed, have not completed their education, or are working in other countries.
+
+Step 3: Look for clear indicators of stance
+The writer uses phrases like ""غير صحيح"" (which means ""it is not true"") and ""فيه أهم منها"" (which means ""there are more important issues"") to express their stance.
+
+Step 4: Determine the writer's stance
+Based on the content analysis, the writer's stance seems to be against the target topic, as they argue that women should not drive and that there are more pressing issues to address.
+
+Final Stance: Against "
+11,Women Driving,Against,True," Step 1: Analyze the tweet's content
+The tweet mentions ""معانات بنات الارطاويه والقري ان شاء الله سيتم حل مشكلتكم بالطرق الصحيحه"" which translates to ""The suffering of girls in Ar-Turayfah and Al-Qur' is that their problem will be solved in the right way."" This indicates that the writer acknowledges the issue and supports finding a solution.
+
+Step 2: Identify any sarcasm or rhetorical intent
+There is no clear sarcasm or rhetorical intent in the tweet. The writer appears to be genuinely expressing support for addressing the issue.
+
+Step 3: Look for any indication of stance towards the target
+The tweet ends with ""#لن_تقودي,"" which translates to ""#You will not drive."" This statement is against the target of allowing women to drive in Saudi Arabia.
+
+Final Stance: Against
+None "
+12,Women Driving,Against,True," Step 1: Read the tweet carefully and identify key phrases that indicate the writer's stance.
+The tweet says ""حنا مانبي نسوق اذا حليييتو المشااكل اللي تمر فيها المرأة ذيك اللحين طالبو بالسواقه #لن_تقودي""
+
+Step 2: Identify any sarcasm, dialect, or rhetorical intent in the tweet.
+There is no obvious sarcasm, dialect, or rhetorical intent in this tweet.
+
+Step 3: Analyze the tweet for stance towards the target topic.
+The tweet suggests that the writer does not want to drive unless the problems facing women are resolved. The writer also implies that people should only call for driving if they can also resolve the problems.
+
+Step 4: Determine which side of the target the writer is taking.
+The writer seems to be against the driving policy change, as they are stating that they will not drive until all women's issues are resolved.
+
+Final Stance: Against "
+13,Women Driving,UNPARSED,False," To determine the writer's stance on the tweet regarding the 2017–2018 Saudi policy change allowing women to drive, let's break down the content step by step:
+
+1. The tweet starts with a hashtag, #المراه_السعوديه_تسوق, which translates to ""the Saudi woman drives."" This shows support for the policy change.
+2. The writer uses positive language, saying ""الله يجعلها بداية خير"" (May it be a good beginning) and ""تكون فائده لها اكثر من ضررها"" (it will be more beneficial than harmful). This indicates a positive stance towards the policy change.
+3. The writer expresses gratitude for the development of the Kingdom, mentioning ""الحمد لله على تطور المملكه"" (Thank God for the development of the Kingdom). This shows appreciation for the changes.
+4. The writer ends with a prayer, ""اسأل الله ان يكفينا شر الفتن ما ظهر منها وما بطن"" (I ask God to keep us safe from all kinds of الفتن), which is a neutral statement.
+
+Considering these points, the tweet is in favor of the 2017–2018 Saudi policy change allowing women to drive.
+"
+14,Women Driving,Against,True," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet is written in Saudi dialect, which can sometimes convey sarcasm or humor. However, the context of the hashtag #سنسوق_فوق_خشومكم (We will drive over your noses) and #لن_تقودي (You will not drive) indicates a strong stance against the target.
+
+2. The phrase ""شكل اللي سوت هـ الهشتاق تحلم كثيررر"" (The person who created this hashtag dreams a lot) implies that the writer does not believe the target's goal is realistic or achievable.
+
+3. The tone of the tweet is clearly negative, as it uses derogatory language and implies disdain for the target.
+
+4. The hashtags used in the tweet (#سنسوق_فوق_خشومكم and #لن_تقودي) further indicate the writer's opposition to the target, as they are directly opposing it.
+
+Based on this analysis, the writer's stance is clearly against the target.
+
+Final Stance: Against "
+15,Women Driving,Against,True," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet begins with the hashtag #لن_تقودي, which translates to ""I will not drive,"" indicating an opinion against women driving.
+2. The tweet concludes with three laughing emojis (😄😜😎) suggesting a light-hearted tone, potentially indicating that the writer is mocking the idea of women driving.
+3. The use of the phrase ""بإختصار"" (briefly) implies that the writer is stating their opinion succinctly, which can be seen as a defense or promotion of their stance.
+
+Considering the tone and the content, the writer's stance is clearly:
+
+Final Stance: Against "
+16,Women Driving,None,True," To determine the writer's stance, let's break down the tweet step by step:
+
+1. ""نقول كلمة العقل"": The writer is expressing the opinion that driving is not necessary because there are already people who can drive for others. This implies a preference for the status quo.
+2. ""الله لايبدل النعمة اللي احنا فيها"": The writer is expressing gratitude for the current situation, which suggests they do not see the need for change.
+3. "" مايحتاج نسوق فيه من يسوق ويخدمنا"": The writer is stating that there are already people who drive and serve them, implying that the writer is comfortable with the current arrangement.
+
+The tweet does not directly support or oppose women driving; however, it emphasizes the current system of people providing transportation services and expresses satisfaction with it.
+
+Final Stance: None "
+17,Women Driving,Against,True," To analyze the tweet, let's break it down step by step:
+
+1. ""#لن_تقودي"" - The hashtag ""#لن_تقودي"" translates to ""I will not drive,"" which indicates a stance against the target.
+2. ""م راح نقود"" - This phrase means ""We won't drive,"" which is also against the target.
+3. ""بس عند الضروره"" - ""But in necessity,"" showing that the writer acknowledges the need for women to drive.
+4. ""اسفه لازم اقود"" - ""Sorry, I have to drive,"" acknowledging the necessity to drive.
+5. ""غصبن عنك ي ورع"" - ""Against your will, young man,"" showing a critical tone towards the change in policy.
+
+The writer acknowledges the necessity for women to drive and is critical of the policy change that allows them to do so. The sarcastic tone and the critical tone indicate that the writer is against the target.
+
+Final Stance: Against "
+18,Women Driving,None,True," First, let's analyze the tweet step by step:
+
+1. ""متى نروح البحرين ؟"" - This phrase can be translated to ""When do we go to Bahrain?"".
+2. ""#قيادة_المراة_السعوديه"" - This hashtag translates to ""#WomenDrivingInSaudi"".
+
+Now let's consider the context:
+
+The tweet is asking a question related to going to Bahrain, which is not directly about the target topic of women driving in Saudi Arabia. However, the hashtag ""#قيادة_المراة_السعوديه"" indicates that the person is discussing the topic of women driving in Saudi Arabia.
+
+Given that the tweet does not explicitly support or oppose the target topic, the stance of the writer appears to be ""None"".
+
+Final Stance: None "
+19,Women Driving,Favor,True," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet mentions ""الامن يوزع الورود للسيدات خلال بداية قيادتهم السيارة في السعودية,"" which translates to ""Security officers are giving roses to women as they start driving in Saudi Arabia.""
+2. The hashtags #المرأة_السعودية_تسوق and #SaudiWomenDriving are included, which further emphasizes the positive context of the tweet.
+3. The tweet is not critical or opposed to the target, as it is sharing a positive event that occurred during the beginning of women's driving in Saudi Arabia.
+
+Considering these points, the writer's stance is:
+
+Final Stance: Favor "
+20,Women Driving,None,True," Step 1: Identify the target topic in the tweet - The target topic in this tweet is the ""Women Driving"" policy change in Saudi Arabia.
+
+Step 2: Analyze the tweet's content for the writer's stance - The tweet mentions a conversation between two people, Rim and the writer, about driving. The writer suggests that Rim's car can be borrowed to attend a marriage. They also mention that they have driven to similar events before.
+
+Step 3: Consider rhetorical intent - The tweet seems to be in a casual, conversational tone, and the writer doesn't express a clear stance on the women driving policy change. However, the writer is implying that driving is a common practice and that they have done it themselves.
+
+Step 4: Determine the writer's stance - Based on the casual tone and lack of a clear stance on the target topic, the writer's stance seems to be ""None.""
+
+Final Stance: None "
+21,Women Driving,UNPARSED,False," Step 1: Identify the main topic in the tweet.
+The main topic in this tweet is women driving in Saudi Arabia.
+
+Step 2: Look for keywords and phrases that indicate the writer's stance.
+- ""لن_تقودي"": ""لن تقود"" which translates to ""will not drive"" in English.
+- ""مرأة"": ""المرأة"" which translates to ""woman"" in English.
+- ""جزء لا يتجزء"": ""جزء لا يتجزء"" which translates to ""part of"" in English.
+- ""حقوق"": ""حقوق"" which translates to ""rights"" in English.
+- ""واجبات"": ""واجبات"" which translates to ""duties"" in English.
+- ""حال اي بشر"": ""حال اي بشر"" which translates to ""like any other humans"" in English.
+- ""ماكو اي مشكلة"": ""ماكو اي مشكلة"" which translates to ""no problem"" in English.
+- ""انعدام الوعي حضاري"": ""انعدام الوعي حضاري"" which translates to ""lack of awareness of civilization"" in English.
+
+Step 3: Analyze the writer's stance based on the keywords and phrases.
+The"
+22,Women Driving,Against,True," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet uses the hashtag #لن_تقودي, which translates to ""#Won't_drive,"" indicating support for the hashtag's purpose of opposing women driving.
+2. The writer expresses relief that there is no need for women to drive, which suggests a preference for the current situation.
+3. The mention of buying a car ""from America"" and the mention of a price of ""a million and a little more"" could be interpreted as sarcasm or mockery of women who own or drive cars.
+4. The use of the walking emoji 🚶🏿 could be interpreted as a sarcastic suggestion that women should walk instead of driving cars.
+
+Based on this analysis, the writer appears to be taking a stance against women driving. Therefore, the final stance is:
+
+Final Stance: Against "
+23,Women Driving,Against,True," To determine the writer's stance, let's analyze the tweet step by step:
+
+1. The tweet uses the hashtag #المراه_السعوديه_تسوق (Women in Saudi Arabia drive).
+2. The writer mentions ""بعض البنات تبي سيارة لون وردي والثانيه تبي لون بنفسجي"" (some girls want a car in pink and the other in purple), implying that the writer finds these preferences unusual.
+3. The writer then says ""ماكو ابيض واسود بس لا تشغلين العالم اللي عندج"" (there's no white or black just don't create a fuss about what you have).
+4. The writer ends with ""اوكى كذا مره !! . . ."" (okay, that's enough for now!).
+
+The tweet criticizes the choices of car colors and suggests that the writer is not impressed by the fact that some girls are excited about driving. The tone of the tweet is sarcastic and dismissive, indicating that the writer does not support the idea of women driving.
+
+Final Stance: Against "
+24,Women Driving,Against,True," To determine the writer's stance, let's analyze the content step by step:
+
+1. The tweet starts with ""إذا كانت صلاة المرأه في بيتها أفضل من المسجد"" which translates to ""If a woman's prayer in her house is better than in the mosque."" This statement implies that the writer believes it is better for a woman to pray in her house than in a mosque.
+
+2. The writer then says ""فكيف بإخراجها لوحدها بسيارتها"" which translates to ""How about if she goes out alone in her car?"" This question implies that the writer is questioning the appropriateness of a woman driving alone.
+
+3. The hashtag ""#لن_تقودي"" translates to ""#IWon't_Drive,"" which means the writer does not support the idea of women driving.
+
+Based on this analysis, the writer's stance is clearly against women driving.
+
+Final Stance: Against "

@@ -1,0 +1,21 @@
+row_index,target,gold_label,predicted_label,model_id,parse_success,raw_response
+0,Women Driving,,None,qwen/qwen3.6-27b,False,"
+<think>
+Here's a thinking process:
+
+1. "
+1,Women Driving,,None,qwen/qwen3.6-27b,False,"
+<think>
+Here's a thinking process:
+
+1. "
+2,Women Driving,,None,qwen/qwen3.6-27b,False,"
+<think>
+Here's a thinking process:
+
+1. "
+3,Women Driving,,None,qwen/qwen3.6-27b,False,"
+<think>
+Here's a thinking process:
+
+1. "

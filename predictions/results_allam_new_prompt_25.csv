@@ -1,0 +1,28 @@
+row_index,target,predicted_label,parse_success,raw_response
+0,Women Driving,Favor,True, Favor 
+1,Women Driving,Favor,True, Favor 
+2,Women Driving,Favor,True, Favor 
+3,Women Driving,Favor,True, Favor 
+4,Women Driving,Against,True, Against 
+5,Women Driving,None,True, None 
+6,Women Driving,Favor,True, Favor 
+7,Women Driving,None,True, None 
+8,Women Driving,None,True, None 
+9,Women Driving,Favor,True, Favor 
+10,Women Driving,Against,True, Against 
+11,Women Driving,Favor,True, Favor 
+12,Women Driving,None,True, None 
+13,Women Driving,Favor,True, Favor 
+14,Women Driving,Against,True, Against 
+15,Women Driving,None,True, None 
+16,Women Driving,None,True, None 
+17,Women Driving,Favor,True, Favor 
+18,Women Driving,None,True, None 
+19,Women Driving,Favor,True, Favor 
+20,Women Driving,None,True, None 
+21,Women Driving,Favor,True, Favor 
+22,Women Driving,None,True, None 
+23,Women Driving,None,True, None 
+24,Women Driving,None,False," Reasoning: The tweet discusses the preference of a woman's prayer in her home over in the mosque, and questions the necessity of her driving alone. This implies a conservative stance on the topic of women driving.
+
+Answer: None "
