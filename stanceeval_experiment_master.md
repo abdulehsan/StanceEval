@@ -78,6 +78,10 @@ Zero-shot inference runs on Gemma 4 31B (Cerebras API) evaluated on the full `de
 | **Gemma 4 31B** (Prompt v3) | 100-row Subset | 0.8730 | 0.6600 | 0.9583 | **0.9094** | 0.7729 | [results_summary.csv#L7](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L7) |
 | **Gemma 4 31B** (Original prompt, T=1.0) | 619-row Dev | 0.9066 | 0.7685 | 0.8996 | **0.8848** | 0.7820 | [results_summary.csv#L6](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L6) |
 | **Gemma 4 31B** (Original prompt, Arabic Targets, T=1.0) | 619-row Dev | 0.9066 | 0.7785 | 0.8970 | **0.8844** | 0.7816 | [results_summary.csv#L16](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L16) |
+| **Gemma 4 31B** (Revised, T=0.1) | 619-row Dev | 0.9084 | 0.7765 | 0.8829 | **0.8785** | 0.7552 | [results_summary.csv#L20](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L20) |
+| **Gemma 4 31B** (CI v1, T=0.1) | 619-row Dev | 0.9058 | 0.7744 | 0.8986 | **0.8806** | 0.7603 | [results_summary.csv#L21](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L21) |
+| **Gemma 4 31B** (CI v3, T=0.1) | 619-row Dev | 0.9063 | 0.7818 | 0.8974 | **0.8834** | 0.7600 | [results_summary.csv#L22](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L22) |
+| **Gemma 4 31B** (CI v5, T=0.1) | 619-row Dev | 0.9018 | 0.7848 | 0.8974 | **0.8817** | 0.7514 | [results_summary.csv#L23](file:///d:/Abdullah%20Files/Programmming/python/StanceEval/results_summary.csv#L23) |
 
 ---
 
