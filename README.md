@@ -38,15 +38,8 @@ Evaluated on the official CodaBench platform for Mawqif-v2 Track 1:
 
 ```
 StanceEval/
-├── data/                                 # Official Mawqif-v2 data splits
-│   ├── train.csv                         # 2,473 training tweets
-│   ├── dev.csv                           # 619 development tweets (3 targets)
-│   └── ground_truth.csv                  # 352 blind evaluation tweets (Women Driving)
 ├── Evaluation Script/                    # Official task evaluation script
 │   └── evaluate.py                       # Computes Favg2 and Favg3 macro-F1 metrics
-├── predictions/                          # Official prediction files
-│   ├── results_gemma4_31b_cerebras_test_ci_v3.txt
-│   └── results_gemma4_31b_cerebras_test_revised_zeroshot.txt
 ├── src/                                  # Source code
 │   ├── arabert_finetune.py               # Supervised fine-tuning for AraBERT variants
 │   ├── data_utils.py                     # Data loading, preprocessing, and export helpers
@@ -62,7 +55,6 @@ StanceEval/
 │   ├── allam_inference.py                # ALLaM-7B local dialect interpreter pipeline
 │   ├── openai_inference_test_ci_v3_batched.py     # Batched OpenAI / GPT inference
 │   └── openai_inference_test_ci_v3_batched_sol.py # Alternative GPT pipeline
-├── references.bib                        # BibTeX references
 ├── requirements.txt                      # Python dependencies
 └── README.md                             # Project documentation
 ```
