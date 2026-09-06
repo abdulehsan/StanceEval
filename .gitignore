@@ -47,38 +47,33 @@ checkpoints/
 Thumbs.db
 desktop.ini
 
-# Word Documents, Drafts & Paper Guidelines
+# Word Documents & Office Drafts
 *.docx
 *.doc
 ~$*
 
-# Internal Project Notes, EDA & Scratch Files
-notes.md
-notes.txt
-eda.md
-error_analysis.md
-file_inventory.md
-state.md
-stanceeval2026_baseline_spec.md
-stanceeval_experiment_master.md
-all_models_analysis_report.md
-summary_two_stage_round3_25.txt
-allam_test_results.csv
-results_two_stage_pipeline_round3_25.csv
-results_summary.csv
-hashtag_entity_kb.json
+# Markdown Files (Ignore all except README.md)
+*.md
+!README.md
 
-# Scratch Folders & Internal Jupyter Notebooks
+# JSON Files
+*.json
+
+# CSV & Data Files (Ignore all CSVs)
+*.csv
+
+# Text Files (Ignore all TXT except requirements.txt)
+*.txt
+!requirements.txt
+
+# Scratch, Predictions & Logs
 scratch/
+predictions/
 qwen_raw_logs/
 Final_Best_LLM_ANLP_0_8940favg2.ipynb
 cleanup.py
-run_allam_test.py
-run_debate_pipeline.py
-run_full_two_stage_352.py
-run_kb_test.py
-run_two_stage_round3.py
-prompt_builder.py
+prompt_builder*
+run_*.py
 
 # Internal / Deprecated Scripts in src/
 src/antigravity_inference_test.py
@@ -101,11 +96,6 @@ src/qwen_inference.py
 src/qwen_inference_ci_v3.py
 src/qwen_inference_test.py
 
-# Evaluation Temporary Folders & Submission Zips
+# Evaluation Temporary Folders & Archives
 Evaluation Script/extracted_submission/
 *.zip
-
-# Intermediate Predictions (Keep only clean final test submission outputs)
-predictions/*
-!predictions/results_gemma4_31b_cerebras_test_ci_v3.txt
-!predictions/results_gemma4_31b_cerebras_test_revised_zeroshot.txt
