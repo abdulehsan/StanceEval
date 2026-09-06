@@ -3,6 +3,7 @@
 *.env
 .env.*
 references.bib
+*.bib
 
 
 # Python Cache & Bytecode
