@@ -1,36 +1,111 @@
-# Secrets
+# Environment & Secrets
 .env
+*.env
+.env.*
 
-# Virtual environment
-stanceeval-venv/
-
-# Python cache
+# Python Cache & Bytecode
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# AraBERT checkpoints (large binary files — delete losers after dev comparison)
+# Virtual Environments
+stanceeval-venv/
+venv/
+env/
+ENV/
+
+# Checkpoints & Models
 checkpoints/
+*.pt
+*.pth
+*.bin
+*.gguf
 
-# Qwen raw logs (large JSONL — keep locally, don't push)
-qwen_raw_logs/
-
-# Editor/OS
+# IDE / OS Files
 .vscode/
 .idea/
 *.swp
 *~
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Temp eval directories created by evaluate.py
-Evaluation Script/extracted_submission/
+# Word Documents, Drafts & Paper Guidelines
+*.docx
+*.doc
+~$*
 
+# Internal Project Notes, EDA & Scratch Files
+notes.md
+notes.txt
+eda.md
 error_analysis.md
-stanceeval2026_baseline_spec.md
+file_inventory.md
 state.md
+stanceeval2026_baseline_spec.md
+stanceeval_experiment_master.md
+all_models_analysis_report.md
+summary_two_stage_round3_25.txt
+allam_test_results.csv
+results_two_stage_pipeline_round3_25.csv
+results_summary.csv
+hashtag_entity_kb.json
 
-# Zip submission archives
+# Scratch Folders & Internal Jupyter Notebooks
+scratch/
+qwen_raw_logs/
+Final_Best_LLM_ANLP_0_8940favg2.ipynb
+cleanup.py
+run_allam_test.py
+run_debate_pipeline.py
+run_full_two_stage_352.py
+run_kb_test.py
+run_two_stage_round3.py
+prompt_builder.py
+
+# Internal / Deprecated Scripts in src/
+src/antigravity_inference_test.py
+src/check_partial_progress.py
+src/dashboard/
+src/temp_verify.py
+src/gemma_ef_i.py
+src/gemma_inference.py
+src/gemma_inference_arabic_target.py
+src/gemma_inference_full_v1_arabic_target.py
+src/gemma_inference_test_ci_v3_1.py
+src/gemma_inference_test_event_favor_clause_v2.py
+src/gemma_inference_test_personal_action_clause_v1.py
+src/gemma_inference_test_refined.py
+src/gemma_inference_test_sarcasm_direction_v1.py
+src/gemma_inference_train.py
+src/gemma_inference_zeroshot_arabic_target_temp01.py
+src/qwen3_32b_inference_test.py
+src/qwen_inference.py
+src/qwen_inference_ci_v3.py
+src/qwen_inference_test.py
+
+# Evaluation Temporary Folders & Submission Zips
+Evaluation Script/extracted_submission/
 *.zip
+
+# Intermediate Predictions (Keep only clean final test submission outputs)
+predictions/*
+!predictions/results_gemma4_31b_cerebras_test_ci_v3.txt
+!predictions/results_gemma4_31b_cerebras_test_revised_zeroshot.txt

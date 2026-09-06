@@ -14,8 +14,9 @@ from cerebras.cloud.sdk import Cerebras
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_HERE, "src"))
+_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+_HERE = _ROOT
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from data_utils import write_pred_txt
 
 # ── Load environment variables ────────────────────────────────────────────────
