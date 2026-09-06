@@ -16,7 +16,7 @@ Evaluated on the official CodaBench platform for Mawqif-v2 Track 1:
 | **Gemma 4 31B (CI v3)** | Context Injection + Mental Rewrite + Positive Framing *(Final)* | **0.8661** | **82.67%** | **0.6746** | **7th** |
 | **Gemma 4 31B (CI v5)** | Context Injection + Skepticism / Traffic Doubt Rules | **0.8635** | 82.39% | 0.6626 | — |
 | **Gemma 4 31B (CI v1)** | Context Injection (Historical Context + Mental Rewrite) | **0.8485** | 80.97% | 0.6702 | — |
-| **Gemma 4 31B (Revised v1)** | Mental Translation & Target Normalization *(Pre-final)* | **0.8444** | 80.11% | 0.6429 | 3rd* |
+| **Gemma 4 31B (Revised v1)** | Mental Translation & Target Normalization *(Pre-final)* | **0.8444** | 80.11% | 0.6429 | — |
 | **Gemma 4 31B (Prompt v1)** | Initial Zero-Shot Baseline | **0.8063** | 75.28% | 0.6183 | — |
 
 *\*Rank at the time of submission (July 24).*
@@ -151,7 +151,7 @@ For all reported zero-shot generative results:
 
 ---
 
-## 📖 Citation
+<!-- ## 📖 Citation
 
 If you use this repository or our findings in your work, please cite:
 
@@ -162,4 +162,4 @@ If you use this repository or our findings in your work, please cite:
   booktitle={Proceedings of the ArabicNLP 2026 Shared Tasks},
   year={2026}
 }
-```
+``` -->
